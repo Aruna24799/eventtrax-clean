@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EventTrax — Participant Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <style>
+    :root {
+      --bg: #080810;
+      --surface: #0e0e1a;
+      --surface2: #141424;
+      --surface3: #1a1a2e;
+      --border: rgba(255,255,255,0.07);
+      --primary: #00d4aa;
+      --secondary: #6366f1;
+      --accent: #f59e0b;
+      --red: #ef4444;
+      --green: #22c55e;
+      --text: #f1f1f5;
+      --muted: rgba(241,241,245,0.45);
+      --font-head: 'Syne', sans-serif;
+      --font-body: 'DM Sans', sans-serif;
+      --sidebar: 260px;
+    }
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family: var(--font-body); background: var(--bg); color: var(--text); display: flex; min-height: 100vh; }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      width: var(--sidebar);
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+      z-index: 100;
+    }
+
+    .sidebar-logo {
+      padding: 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-family: var(--font-head);
+      font-size: 18px;
+      font-weight: 800;
+    }
+
+    .logo-icon {
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, var(--secondary), #818cf8);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+    }
+
+    .sidebar-label {
+      padding: 20px 24px 8px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--muted);
+    }
+
+    nav { flex: 1; padding: 8px 12px; }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 2px;
+      border: none;
+      background: none;
+      width: 100%;
+      text-align: left;
+    }
+    .nav-item:hover { background: rgba(255,255,255,0.04); color: var(--text); }
+    .nav-item.active { background: rgba(99,102,241,0.1); color: #818cf8; font-weight: 600; }
+    .nav-item .icon { font-size: 18px; width: 24px; text-align: center; }
+
+    .sidebar-user {
+      padding: 20px 24px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .user-avatar {
+      width: 38px; height: 38px;
+      background: linear-gradient(135deg, var(--secondary), #818cf8);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 16px; color: #fff;
+      flex-shrink: 0;
+    }
+
+    .user-info { flex: 1; min-width: 0; }
+    .user-name { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .user-role { font-size: 11px; color: #818cf8; background: rgba(99,102,241,0.08); padding: 2px 8px; border-radius: 100px; display: inline-block; margin-top: 2px; }
+    .btn-logout { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 18px; padding: 4px; transition: color 0.2s; }
+    .btn-logout:hover { color: var(--red); }
+
+    /* ── MAIN ── */
+    .main { margin-left: var(--sidebar); flex: 1; min-height: 100vh; }
+
+    .topbar {
+      height: 64px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 32px;
+      background: rgba(8,8,16,0.8);
+      backdrop-filter: blur(20px);
+      position: sticky; top: 0; z-index: 50;
+    }
+
+    .topbar-title { font-family: var(--font-head); font-size: 18px; font-weight: 700; }
+
+    /* ── PAGES ── */
+    .page { display: none; padding: 32px; }
+    .page.active { display: block; }
+
+    /* ── EVENT CARDS ── */
+    .events-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 20px;
+    }
+
+    .event-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      overflow: hidden;
+      transition: all 0.3s;
+    }
+    .event-card:hover { transform: translateY(-4px); box-shadow: 0 20px 60px rgba(0,0,0,0.4); border-color: rgba(255,255,255,0.1); }
+
+    .event-banner {
+      height: 8px;
+    }
+
+    .event-body { padding: 24px; }
+
+    .event-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .event-cat {
+      padding: 3px 10px;
+      background: rgba(99,102,241,0.1);
+      border: 1px solid rgba(99,102,241,0.2);
+      border-radius: 100px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #818cf8;
+    }
+
+    .event-title {
+      font-family: var(--font-head);
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      line-height: 1.3;
+    }
+
+    .event-desc {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.6;
+      margin-bottom: 16px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .event-details {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 20px;
+    }
+
+    .event-detail {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .event-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      border-radius: 100px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .badge-dot { width: 5px; height: 5px; border-radius: 50%; }
+
+    .btn-primary {
+      padding: 10px 20px;
+      background: linear-gradient(135deg, var(--primary), #00b894);
+      color: #000;
+      border: none;
+      border-radius: 10px;
+      font-family: var(--font-body);
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+    .btn-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(0,212,170,0.3); }
+    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+    .btn-primary.registered { background: linear-gradient(135deg, #6366f1, #818cf8); color: #fff; }
+
+    .btn-secondary {
+      padding: 10px 16px;
+      background: var(--surface2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-family: var(--font-body);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-secondary:hover { border-color: rgba(255,255,255,0.15); }
+
+    /* ── FILTERS ── */
+    .filter-bar {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 28px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .search-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 14px;
+      flex: 1;
+      max-width: 380px;
+    }
+
+    .search-wrap input {
+      background: none;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 14px;
+      width: 100%;
+    }
+    .search-wrap input::placeholder { color: var(--muted); }
+
+    .filter-chip {
+      padding: 8px 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .filter-chip.active { border-color: var(--secondary); color: #818cf8; background: rgba(99,102,241,0.08); }
+    .filter-chip:hover { border-color: rgba(255,255,255,0.15); color: var(--text); }
+
+    /* ── MY EVENTS (registered) ── */
+    .reg-event-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 16px;
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
+      transition: all 0.2s;
+    }
+    .reg-event-card:hover { border-color: rgba(255,255,255,0.12); }
+
+    .reg-event-color { width: 6px; border-radius: 4px; align-self: stretch; flex-shrink: 0; }
+
+    .reg-event-info { flex: 1; }
+    .reg-event-title { font-family: var(--font-head); font-size: 17px; font-weight: 700; margin-bottom: 6px; }
+    .reg-event-meta { font-size: 13px; color: var(--muted); display: flex; gap: 16px; flex-wrap: wrap; }
+
+    .reg-event-actions { display: flex; gap: 10px; align-items: center; flex-shrink: 0; }
+
+    /* ── QR MODAL ── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.8);
+      backdrop-filter: blur(12px);
+      z-index: 200;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 40px;
+      width: 440px;
+      max-width: 95vw;
+      text-align: center;
+      position: relative;
+    }
+
+    .modal h2 { font-family: var(--font-head); font-size: 22px; font-weight: 800; margin-bottom: 6px; }
+    .modal p { color: var(--muted); font-size: 14px; margin-bottom: 24px; }
+
+    .qr-container {
+      display: inline-block;
+      padding: 20px;
+      background: #fff;
+      border-radius: 16px;
+      margin-bottom: 20px;
+    }
+
+    .token-display {
+      font-family: monospace;
+      font-size: 12px;
+      color: var(--primary);
+      background: rgba(0,212,170,0.08);
+      border: 1px solid rgba(0,212,170,0.2);
+      border-radius: 8px;
+      padding: 10px 14px;
+      word-break: break-all;
+      margin-bottom: 20px;
+    }
+
+    .close-btn {
+      position: absolute;
+      top: 16px; right: 16px;
+      width: 36px; height: 36px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      font-size: 18px;
+      color: var(--muted);
+      transition: all 0.2s;
+    }
+    .close-btn:hover { color: var(--text); }
+
+    /* ── FEEDBACK MODAL ── */
+    .star-rating { display: flex; gap: 8px; justify-content: center; margin-bottom: 20px; }
+    .star-btn { font-size: 32px; cursor: pointer; color: var(--muted); transition: all 0.15s; background: none; border: none; }
+    .star-btn.selected, .star-btn:hover { color: var(--accent); transform: scale(1.15); }
+
+    textarea {
+      width: 100%;
+      padding: 12px 14px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 14px;
+      outline: none;
+      resize: vertical;
+      min-height: 100px;
+      transition: all 0.2s;
+    }
+    textarea:focus { border-color: var(--secondary); box-shadow: 0 0 0 3px rgba(99,102,241,0.1); }
+    textarea::placeholder { color: var(--muted); }
+
+    /* ── PROFILE ── */
+    .profile-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 40px;
+      max-width: 600px;
+    }
+
+    .profile-header {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      margin-bottom: 32px;
+    }
+
+    .profile-avatar {
+      width: 80px; height: 80px;
+      background: linear-gradient(135deg, var(--secondary), #818cf8);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-head);
+      font-size: 32px;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    .form-group { margin-bottom: 20px; }
+    label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    input[type="text"], input[type="email"] {
+      width: 100%;
+      padding: 12px 14px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 14px;
+      outline: none;
+      transition: all 0.2s;
+    }
+    input:focus { border-color: var(--secondary); box-shadow: 0 0 0 3px rgba(99,102,241,0.1); }
+
+    /* ── EMPTY ── */
+    .empty-state { text-align: center; padding: 80px 40px; color: var(--muted); }
+    .empty-icon { font-size: 48px; margin-bottom: 16px; }
+    .empty-state h3 { font-family: var(--font-head); font-size: 20px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+    .empty-state p { font-size: 14px; line-height: 1.6; }
+
+    /* ── SPINNER ── */
+    .spinner { width: 16px; height: 16px; border: 2px solid rgba(0,0,0,0.2); border-top-color: #000; border-radius: 50%; animation: spin 0.7s linear infinite; display: inline-block; }
+    .sp { width: 40px; height: 40px; border: 3px solid rgba(99,102,241,0.15); border-top-color: var(--secondary); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .page-spinner { display: flex; align-items: center; justify-content: center; padding: 80px; }
+
+    /* ── CERTS ── */
+    .cert-card {
+      background: var(--surface);
+      border: 1px solid rgba(245,158,11,0.2);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+    .cert-icon { font-size: 40px; }
+    .cert-info { flex: 1; }
+    .cert-id { font-family: monospace; font-size: 12px; color: var(--accent); background: rgba(245,158,11,0.08); padding: 4px 10px; border-radius: 6px; display: inline-block; margin-top: 4px; }
+
+    @media (max-width: 1024px) {
+      :root { --sidebar: 70px; }
+      .nav-item span, .sidebar-label, .user-info, .sidebar-logo span { display: none; }
+      .sidebar-logo, .sidebar-user, .nav-item { justify-content: center; }
+    }
+
+    @media (max-width: 640px) {
+      .main { margin-left: 0; }
+      .sidebar { transform: translateX(-100%); }
+      .page { padding: 16px; }
+      .events-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-icon">⬡</div>
+    <span>EventTrax</span>
+  </div>
+
+  <nav>
+    <div class="sidebar-label">Discover</div>
+    <button class="nav-item active" onclick="showPage('discover')">
+      <span class="icon">🔍</span>
+      <span>Discover Events</span>
+    </button>
+
+    <div class="sidebar-label">My Activity</div>
+    <button class="nav-item" onclick="showPage('myevents')">
+      <span class="icon">🗓</span>
+      <span>My Events</span>
+    </button>
+    <button class="nav-item" onclick="showPage('certificates')">
+      <span class="icon">🏆</span>
+      <span>Certificates</span>
+    </button>
+
+    <div class="sidebar-label">Account</div>
+    <button class="nav-item" onclick="showPage('profile')">
+      <span class="icon">👤</span>
+      <span>Profile</span>
+    </button>
+  </nav>
+
+  <div class="sidebar-user">
+    <div class="user-avatar" id="sidebarAvatar">P</div>
+    <div class="user-info">
+      <div class="user-name" id="sidebarName">Loading...</div>
+      <div class="user-role">Participant</div>
+    </div>
+    <button class="btn-logout" onclick="logout()" title="Logout">↪</button>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-title" id="topbarTitle">Discover Events</div>
+    <div id="topbarRight">
+      <button class="btn-secondary" onclick="showPage('myevents')">My Events →</button>
+    </div>
+  </div>
+
+  <!-- DISCOVER PAGE -->
+  <div class="page active" id="page-discover">
+    <div class="filter-bar">
+      <div class="search-wrap">
+        <span>🔍</span>
+        <input type="text" id="searchInput" placeholder="Search events..." oninput="filterDiscoverEvents()">
+      </div>
+      <button class="filter-chip active" onclick="setFilter('all', this)">All</button>
+      <button class="filter-chip" onclick="setFilter('Tech', this)">💻 Tech</button>
+      <button class="filter-chip" onclick="setFilter('Business', this)">💼 Business</button>
+      <button class="filter-chip" onclick="setFilter('Design', this)">🎨 Design</button>
+      <button class="filter-chip" onclick="setFilter('Education', this)">📚 Education</button>
+    </div>
+    <div id="discoverGrid">
+      <div class="page-spinner"><div class="sp"></div></div>
+    </div>
+  </div>
+
+  <!-- MY EVENTS PAGE -->
+  <div class="page" id="page-myevents">
+    <div style="margin-bottom:24px">
+      <h2 style="font-family:var(--font-head);font-size:24px;font-weight:800">My Registered Events</h2>
+      <p style="color:var(--muted);font-size:14px;margin-top:4px">Events you've joined</p>
+    </div>
+    <div id="myEventsList">
+      <div class="page-spinner"><div class="sp"></div></div>
+    </div>
+  </div>
+
+  <!-- CERTIFICATES PAGE -->
+  <div class="page" id="page-certificates">
+    <div style="margin-bottom:24px">
+      <h2 style="font-family:var(--font-head);font-size:24px;font-weight:800">My Certificates</h2>
+      <p style="color:var(--muted);font-size:14px;margin-top:4px">Download your participation certificates</p>
+    </div>
+    <div id="certsList">
+      <div class="page-spinner"><div class="sp"></div></div>
+    </div>
+  </div>
+
+  <!-- PROFILE PAGE -->
+  <div class="page" id="page-profile">
+    <div class="profile-card" id="profileCard">
+      <div class="page-spinner"><div class="sp"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- QR MODAL -->
+<div class="modal-overlay" id="qrModal">
+  <div class="modal">
+    <button class="close-btn" onclick="closeModal('qrModal')">✕</button>
+    <h2>Your Attendance QR</h2>
+    <p>Show this to the event organizer to mark your attendance</p>
+    <div class="qr-container">
+      <div id="qrCode"></div>
+    </div>
+    <div class="token-display" id="qrToken">—</div>
+    <p style="font-size:12px;color:var(--muted)">This is your unique token for this event.</p>
+  </div>
+</div>
+
+<!-- FEEDBACK MODAL -->
+<div class="modal-overlay" id="feedbackModal">
+  <div class="modal">
+    <button class="close-btn" onclick="closeModal('feedbackModal')">✕</button>
+    <h2>Rate This Event</h2>
+    <p id="feedbackEventTitle">Share your experience</p>
+    <div class="star-rating" id="starRating">
+      <button class="star-btn" data-star="1" onclick="selectStar(1)">★</button>
+      <button class="star-btn" data-star="2" onclick="selectStar(2)">★</button>
+      <button class="star-btn" data-star="3" onclick="selectStar(3)">★</button>
+      <button class="star-btn" data-star="4" onclick="selectStar(4)">★</button>
+      <button class="star-btn" data-star="5" onclick="selectStar(5)">★</button>
+    </div>
+    <div style="text-align:left;margin-bottom:20px">
+      <textarea id="feedbackMessage" placeholder="Tell us what you thought... (optional)"></textarea>
+    </div>
+    <input type="hidden" id="feedbackEventId">
+    <button class="btn-primary" onclick="submitFeedback()" id="btnFeedback" style="width:100%;justify-content:center">Submit Feedback</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<script src="config.js"></script>
+<script>
+let currentUser = null;
+let allDiscoverEvents = [];
+let myRegistrations = [];
+let activeFilter = 'all';
+let selectedRating = 0;
+
+// ── Init ──────────────────────────────────────────────────────
+window.addEventListener('load', async () => {
+  const session = await requireAuth();
+  if (!session) return;
+
+  currentUser = await getCurrentUser();
+  if (!currentUser) {
+    await db.auth.signOut();
+    window.location.href = 'auth.html';
+    return;
+  }
+  if (currentUser.role === 'admin') { window.location.href = 'admin.html'; return; }
+
+  document.getElementById('sidebarName').textContent = currentUser.full_name;
+  document.getElementById('sidebarAvatar').textContent = currentUser.full_name[0].toUpperCase();
+
+  await Promise.all([loadDiscoverEvents(), loadMyRegistrations()]);
+});
+
+// ── Nav ───────────────────────────────────────────────────────
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById(`page-${name}`).classList.add('active');
+  const titles = { discover: 'Discover Events', myevents: 'My Events', certificates: 'Certificates', profile: 'Profile' };
+  document.getElementById('topbarTitle').textContent = titles[name] || name;
+
+  const navMap = { discover: 0, myevents: 1, certificates: 2, profile: 3 };
+  const navItems = document.querySelectorAll('.nav-item');
+  if (navMap[name] !== undefined) navItems[navMap[name]]?.classList.add('active');
+
+  if (name === 'myevents') loadMyEventsPage();
+  if (name === 'certificates') loadCertificates();
+  if (name === 'profile') loadProfile();
+}
+
+// ── Discover Events ───────────────────────────────────────────
+async function loadDiscoverEvents() {
+  const { data } = await db.from('events').select('*').in('status', ['open','closed','completed']).order('date');
+  allDiscoverEvents = data || [];
+
+  const { data: regs } = await db.from('registrations').select('event_id').eq('user_id', currentUser.id);
+  myRegistrations = (regs || []).map(r => r.event_id);
+
+  renderDiscoverGrid(allDiscoverEvents);
+}
+
+function setFilter(filter, el) {
+  activeFilter = filter;
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  filterDiscoverEvents();
+}
+
+function filterDiscoverEvents() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  let filtered = allDiscoverEvents;
+  if (activeFilter !== 'all') filtered = filtered.filter(e => e.category === activeFilter);
+  if (q) filtered = filtered.filter(e => e.title.toLowerCase().includes(q) || e.description?.toLowerCase().includes(q) || e.location.toLowerCase().includes(q));
+  renderDiscoverGrid(filtered);
+}
+
+function renderDiscoverGrid(events) {
+  const grid = document.getElementById('discoverGrid');
+  if (!events.length) {
+    grid.innerHTML = '<div class="empty-state"><div class="empty-icon">🔍</div><h3>No events found</h3><p>Try a different search or check back later.</p></div>';
+    return;
+  }
+
+  grid.innerHTML = `<div class="events-grid">${events.map(e => {
+    const isReg = myRegistrations.includes(e.id);
+    const isOpen = e.status === 'open';
+    return `
+      <div class="event-card">
+        <div class="event-banner" style="background:${e.banner_color || '#00d4aa'}"></div>
+        <div class="event-body">
+          <div class="event-meta">
+            <span class="event-cat">${getCategoryEmoji(e.category)} ${e.category}</span>
+            ${statusBadge(e.status)}
+          </div>
+          <h3 class="event-title">${e.title}</h3>
+          <p class="event-desc">${e.description || 'No description provided.'}</p>
+          <div class="event-details">
+            <div class="event-detail">📅 ${formatDate(e.date)} at ${formatTime(e.time)}</div>
+            <div class="event-detail">📍 ${e.location}</div>
+            <div class="event-detail">👥 ${e.capacity} spots</div>
+          </div>
+          <div class="event-footer">
+            ${isReg ? `<button class="btn-primary registered" disabled>✓ Registered</button>` :
+              isOpen ? `<button class="btn-primary" onclick="registerEvent('${e.id}', this)">Register →</button>` :
+              `<button class="btn-secondary" disabled>Registration closed</button>`}
+            ${isReg ? `<button class="btn-secondary" onclick="showQR('${e.id}')">📱 QR</button>` : '<span></span>'}
+          </div>
+        </div>
+      </div>`;
+  }).join('')}</div>`;
+}
+
+function statusBadge(status) {
+  const colors = { open:'#00d4aa', closed:'#ef4444', draft:'#6366f1', completed:'#f59e0b' };
+  const c = colors[status] || '#888';
+  return `<span class="status-badge" style="background:${c}18;color:${c}"><span class="badge-dot" style="background:${c}"></span>${status}</span>`;
+}
+
+// ── Register ──────────────────────────────────────────────────
+async function registerEvent(eventId, btn) {
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner" style="border-top-color:#000"></span> Joining...'; }
+
+  const { error } = await db.from('registrations').insert({ event_id: eventId, user_id: currentUser.id });
+
+  if (error) {
+    toast(error.message.includes('duplicate') ? 'Already registered!' : error.message, 'error');
+    if (btn) { btn.disabled = false; btn.innerHTML = 'Register →'; }
+    return;
+  }
+
+  myRegistrations.push(eventId);
+  toast('Registered! Check your QR code. 🎉', 'success');
+  renderDiscoverGrid(allDiscoverEvents.filter(e => activeFilter === 'all' || e.category === activeFilter));
+}
+
+// ── QR ────────────────────────────────────────────────────────
+async function showQR(eventId) {
+  const { data } = await db.from('registrations').select('qr_token').eq('event_id', eventId).eq('user_id', currentUser.id).single();
+  if (!data) return toast('Registration not found', 'error');
+
+  document.getElementById('qrToken').textContent = data.qr_token;
+  document.getElementById('qrCode').innerHTML = '';
+  new QRCode(document.getElementById('qrCode'), { text: data.qr_token, width: 180, height: 180, colorDark: '#000', colorLight: '#fff', correctLevel: QRCode.CorrectLevel.H });
+
+  document.getElementById('qrModal').classList.add('open');
+}
+
+// ── My Events ─────────────────────────────────────────────────
+async function loadMyRegistrations() {
+  const { data } = await db.from('registrations').select('event_id').eq('user_id', currentUser.id);
+  myRegistrations = (data || []).map(r => r.event_id);
+}
+
+async function loadMyEventsPage() {
+  const container = document.getElementById('myEventsList');
+  container.innerHTML = '<div class="page-spinner"><div class="sp"></div></div>';
+
+  const { data, error } = await db.from('registrations')
+    .select('*, events(*)')
+    .eq('user_id', currentUser.id)
+    .order('registered_at', { ascending: false });
+
+  if (error || !data?.length) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-icon">🗓</div><h3>No events yet</h3><p>Discover and register for events to see them here.</p></div>';
+    return;
+  }
+
+  container.innerHTML = data.map(r => {
+    const e = r.events;
+    const hasAttended = r.attended;
+    const canFeedback = e.status === 'completed' || e.status === 'closed';
+
+    return `
+      <div class="reg-event-card">
+        <div class="reg-event-color" style="background:${e.banner_color || '#00d4aa'}"></div>
+        <div class="reg-event-info">
+          <div class="reg-event-title">${e.title}</div>
+          <div class="reg-event-meta">
+            <span>📅 ${formatDate(e.date)}</span>
+            <span>📍 ${e.location}</span>
+            <span>${getCategoryEmoji(e.category)} ${e.category}</span>
+          </div>
+          <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+            ${statusBadge(e.status)}
+            ${hasAttended ? `<span class="status-badge" style="background:rgba(0,212,170,0.1);color:#00d4aa"><span class="badge-dot" style="background:#00d4aa"></span>Attended</span>` : ''}
+          </div>
+        </div>
+        <div class="reg-event-actions">
+          <button class="btn-primary" onclick="window.location.href='event-room.html?id=${e.id}'" style="font-size:13px;padding:8px 16px">🎪 Enter Room</button>
+          <button class="btn-secondary" onclick="showQR('${e.id}')" style="font-size:13px">📱 QR</button>
+          ${canFeedback ? `<button class="btn-secondary" onclick="openFeedback('${e.id}','${e.title.replace(/'/g,"\\'")}')" style="font-size:13px">⭐ Rate</button>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ── Feedback ──────────────────────────────────────────────────
+function openFeedback(eventId, eventTitle) {
+  selectedRating = 0;
+  document.getElementById('feedbackEventId').value = eventId;
+  document.getElementById('feedbackEventTitle').textContent = eventTitle;
+  document.getElementById('feedbackMessage').value = '';
+  document.querySelectorAll('.star-btn').forEach(s => s.classList.remove('selected'));
+  document.getElementById('feedbackModal').classList.add('open');
+}
+
+function selectStar(n) {
+  selectedRating = n;
+  document.querySelectorAll('.star-btn').forEach((s, i) => s.classList.toggle('selected', i < n));
+}
+
+async function submitFeedback() {
+  if (!selectedRating) return toast('Please select a rating', 'warning');
+  const eventId = document.getElementById('feedbackEventId').value;
+  const message = document.getElementById('feedbackMessage').value.trim();
+
+  const btn = document.getElementById('btnFeedback');
+  showLoading(btn, 'Submitting...');
+
+  const { error } = await db.from('feedback').upsert({ event_id: eventId, user_id: currentUser.id, rating: selectedRating, message });
+
+  hideLoading(btn);
+  if (error) return toast(error.message.includes('duplicate') ? 'Already submitted feedback' : error.message, 'error');
+  toast('Feedback submitted! Thank you ⭐', 'success');
+  closeModal('feedbackModal');
+}
+
+// ── Certificates ───────────────────────────────────────────────
+async function loadCertificates() {
+  const container = document.getElementById('certsList');
+  container.innerHTML = '<div class="page-spinner"><div class="sp"></div></div>';
+
+  const { data, error } = await db.from('certificates').select('*, events(title,date,created_by,profiles!events_created_by_fkey(full_name))').eq('user_id', currentUser.id);
+
+  if (error || !data?.length) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-icon">🏆</div><h3>No certificates yet</h3><p>Attend events to earn participation certificates.</p></div>';
+    return;
+  }
+
+  container.innerHTML = data.map(c => `
+    <div class="cert-card">
+      <div class="cert-icon">🏆</div>
+      <div class="cert-info">
+        <div style="font-family:var(--font-head);font-size:16px;font-weight:700">${c.events?.title || 'Event'}</div>
+        <div style="font-size:13px;color:var(--muted);margin-top:4px">${formatDate(c.events?.date)} • Issued ${timeAgo(c.issued_at)}</div>
+        <div class="cert-id">${c.cert_id}</div>
+      </div>
+      <button class="btn-primary" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#000" onclick="downloadCertificate({ participantName:'${currentUser.full_name.replace(/'/g,"\\'")}', eventName:'${(c.events?.title || '').replace(/'/g,"\\'")}', eventDate:'${formatDate(c.events?.date)}', certId:'${c.cert_id}', issuedBy:'${(c.events?.profiles?.full_name || 'EventTrax').replace(/'/g,"\\'")}' })">⬇ Download</button>
+    </div>`).join('');
+}
+
+// ── Profile ───────────────────────────────────────────────────
+async function loadProfile() {
+  const card = document.getElementById('profileCard');
+  card.innerHTML = `
+    <div class="profile-header">
+      <div class="profile-avatar">${currentUser.full_name[0].toUpperCase()}</div>
+      <div>
+        <h2 style="font-family:var(--font-head);font-size:22px;font-weight:800">${currentUser.full_name}</h2>
+        <div style="color:var(--muted);font-size:14px;margin-top:4px">${currentUser.organization || 'No organization'}</div>
+        <span style="font-size:11px;color:#818cf8;background:rgba(99,102,241,0.08);padding:3px 10px;border-radius:100px;margin-top:8px;display:inline-block">Participant</span>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Full Name</label>
+      <input type="text" id="profileName" value="${currentUser.full_name}">
+    </div>
+    <div class="form-group">
+      <label>Organization</label>
+      <input type="text" id="profileOrg" value="${currentUser.organization || ''}">
+    </div>
+    <div class="form-group">
+      <label>Bio</label>
+      <textarea id="profileBio" placeholder="A brief description...">${currentUser.bio || ''}</textarea>
+    </div>
+
+    <button class="btn-primary" onclick="saveProfile()" id="btnSaveProfile">Save Changes</button>
+    <button class="btn-secondary" onclick="logout()" style="margin-left:12px">Sign Out</button>`;
+}
+
+async function saveProfile() {
+  const name = document.getElementById('profileName').value.trim();
+  const org = document.getElementById('profileOrg').value.trim();
+  const bio = document.getElementById('profileBio').value.trim();
+  if (!name) return toast('Name is required', 'error');
+
+  const btn = document.getElementById('btnSaveProfile');
+  showLoading(btn, 'Saving...');
+
+  const { error } = await db.from('profiles').update({ full_name: name, organization: org, bio }).eq('id', currentUser.id);
+
+  hideLoading(btn);
+  if (error) return toast(error.message, 'error');
+  currentUser.full_name = name;
+  document.getElementById('sidebarName').textContent = name;
+  document.getElementById('sidebarAvatar').textContent = name[0].toUpperCase();
+  toast('Profile updated!', 'success');
+}
+
+// ── Modals ────────────────────────────────────────────────────
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+document.querySelectorAll('.modal-overlay').forEach(m => {
+  m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
+});
+</script>
+</body>
+</html>
