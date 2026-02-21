@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EventTrax — Sign In</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg: #080810;
+      --surface: #0e0e1a;
+      --surface2: #141424;
+      --border: rgba(255,255,255,0.07);
+      --primary: #00d4aa;
+      --secondary: #6366f1;
+      --accent: #f59e0b;
+      --text: #f1f1f5;
+      --muted: rgba(241,241,245,0.45);
+      --error: #ef4444;
+      --font-head: 'Syne', sans-serif;
+      --font-body: 'DM Sans', sans-serif;
+    }
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      font-family: var(--font-body);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* Left panel — visual */
+    .auth-visual {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 48px;
+      background: linear-gradient(135deg, rgba(0,212,170,0.04), rgba(99,102,241,0.04));
+      border-right: 1px solid var(--border);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .auth-visual::before {
+      content: '';
+      position: absolute;
+      top: -200px; left: -200px;
+      width: 600px; height: 600px;
+      background: radial-gradient(ellipse, rgba(0,212,170,0.1) 0%, transparent 70%);
+    }
+
+    .auth-visual::after {
+      content: '';
+      position: absolute;
+      bottom: -150px; right: -150px;
+      width: 500px; height: 500px;
+      background: radial-gradient(ellipse, rgba(99,102,241,0.08) 0%, transparent 70%);
+    }
+
+    /* Grid */
+    .auth-visual .grid-bg {
+      position: absolute; inset: 0;
+      background-image: linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+      background-size: 50px 50px;
+    }
+
+    .visual-logo {
+      font-family: var(--font-head);
+      font-size: 22px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: inherit;
+      position: relative;
+      z-index: 1;
+    }
+
+    .logo-icon {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+
+    .visual-content {
+      position: relative;
+      z-index: 1;
+    }
+
+    .visual-content h2 {
+      font-family: var(--font-head);
+      font-size: 40px;
+      font-weight: 800;
+      line-height: 1.1;
+      letter-spacing: -1px;
+      margin-bottom: 20px;
+    }
+
+    .visual-content h2 span {
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .visual-content p { color: var(--muted); font-size: 16px; line-height: 1.7; max-width: 400px; }
+
+    .feature-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 32px;
+    }
+
+    .pill {
+      padding: 8px 16px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 100px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .visual-testimonial {
+      position: relative;
+      z-index: 1;
+      padding: 24px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+    }
+    .visual-testimonial p { font-size: 14px; color: var(--muted); line-height: 1.6; font-style: italic; }
+    .visual-testimonial .author { margin-top: 16px; font-size: 13px; font-weight: 600; color: var(--text); }
+
+    /* Right panel — form */
+    .auth-form-panel {
+      width: 520px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 60px 56px;
+      overflow-y: auto;
+    }
+
+    .form-header { margin-bottom: 40px; }
+    .form-header h1 {
+      font-family: var(--font-head);
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      margin-bottom: 8px;
+    }
+    .form-header p { color: var(--muted); font-size: 15px; }
+
+    /* Mode toggle */
+    .mode-tabs {
+      display: flex;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 4px;
+      margin-bottom: 32px;
+    }
+
+    .mode-tab {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      border-radius: 8px;
+      font-family: var(--font-body);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: transparent;
+      color: var(--muted);
+    }
+    .mode-tab.active {
+      background: var(--surface2);
+      color: var(--text);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+
+    /* Role selector */
+    .role-selector {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .role-option {
+      flex: 1;
+      padding: 16px;
+      background: var(--surface);
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+    }
+
+    .role-option input { display: none; }
+
+    .role-option:has(input:checked),
+    .role-option.selected {
+      border-color: var(--primary);
+      background: rgba(0,212,170,0.06);
+    }
+
+    .role-option.participant-role:has(input:checked),
+    .role-option.participant-role.selected {
+      border-color: var(--secondary);
+      background: rgba(99,102,241,0.06);
+    }
+
+    .role-emoji { font-size: 28px; margin-bottom: 8px; }
+    .role-name { font-size: 13px; font-weight: 700; letter-spacing: 0.5px; }
+    .role-desc { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+    /* Form fields */
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      margin-bottom: 8px;
+      letter-spacing: 0.3px;
+    }
+
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    select {
+      width: 100%;
+      padding: 14px 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 15px;
+      transition: all 0.2s;
+      outline: none;
+    }
+
+    input:focus, select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(0,212,170,0.1);
+    }
+
+    input::placeholder { color: rgba(241,241,245,0.25); }
+
+    select option { background: #1e1e30; }
+
+    /* Error message */
+    .field-error {
+      font-size: 12px;
+      color: var(--error);
+      margin-top: 6px;
+      display: none;
+    }
+
+    .input-error { border-color: var(--error) !important; }
+
+    /* Password wrapper */
+    .password-wrap { position: relative; }
+    .password-wrap input { padding-right: 48px; }
+    .toggle-pass {
+      position: absolute;
+      right: 14px; top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 18px;
+      padding: 4px;
+      display: flex;
+    }
+    .toggle-pass:hover { color: var(--text); }
+
+    /* Strength bar */
+    .strength-bar {
+      height: 3px;
+      background: var(--border);
+      border-radius: 100px;
+      margin-top: 8px;
+      overflow: hidden;
+    }
+    .strength-fill {
+      height: 100%;
+      border-radius: 100px;
+      transition: width 0.3s, background 0.3s;
+      width: 0;
+    }
+
+    /* Submit button */
+    .btn-submit {
+      width: 100%;
+      padding: 16px;
+      background: linear-gradient(135deg, var(--primary), #00b894);
+      color: #000;
+      border: none;
+      border-radius: 12px;
+      font-family: var(--font-body);
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 8px;
+    }
+    .btn-submit:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(0,212,170,0.3);
+    }
+    .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2px solid rgba(0,0,0,0.2);
+      border-top-color: #000;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: inline-block;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .divider {
+      display: flex; align-items: center; gap: 16px;
+      margin: 24px 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .divider::before, .divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .form-footer {
+      text-align: center;
+      font-size: 14px;
+      color: var(--muted);
+      margin-top: 24px;
+    }
+    .form-footer a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .form-footer a:hover { text-decoration: underline; }
+
+    .global-error {
+      padding: 14px 16px;
+      background: rgba(239,68,68,0.08);
+      border: 1px solid rgba(239,68,68,0.2);
+      border-radius: 10px;
+      color: #fca5a5;
+      font-size: 14px;
+      margin-bottom: 20px;
+      display: none;
+    }
+
+    @media (max-width: 900px) {
+      .auth-visual { display: none; }
+      .auth-form-panel { width: 100%; padding: 40px 24px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- LEFT VISUAL PANEL -->
+<div class="auth-visual">
+  <div class="grid-bg"></div>
+  <a href="index.html" class="visual-logo">
+    <div class="logo-icon">⬡</div>
+    EventTrax
+  </a>
+  <div class="visual-content">
+    <h2>The event platform<br>built for <span>real teams</span></h2>
+    <p>Manage events end-to-end with role-based access, QR attendance, analytics, and automated certificate generation.</p>
+    <div class="feature-pills">
+      <span class="pill">🔐 Secure auth</span>
+      <span class="pill">📊 Analytics</span>
+      <span class="pill">📱 QR codes</span>
+      <span class="pill">🏆 Certificates</span>
+      <span class="pill">⭐ Feedback</span>
+      <span class="pill">👥 Multi-user</span>
+    </div>
+  </div>
+  <div class="visual-testimonial">
+    <p>"EventTrax replaced our entire event stack. Registration, attendance, certificates — everything works seamlessly."</p>
+    <div class="author">— Event Operations Team</div>
+  </div>
+</div>
+
+<!-- RIGHT FORM PANEL -->
+<div class="auth-form-panel">
+  <!-- Mode toggle -->
+  <div class="mode-tabs">
+    <button class="mode-tab" id="tabLogin" onclick="switchMode('login')">Sign in</button>
+    <button class="mode-tab" id="tabSignup" onclick="switchMode('signup')">Create account</button>
+  </div>
+
+  <!-- Global error -->
+  <div class="global-error" id="globalError"></div>
+
+  <!-- LOGIN FORM -->
+  <div id="loginForm">
+    <div class="form-header">
+      <h1>Welcome back</h1>
+      <p>Sign in to your EventTrax account</p>
+    </div>
+    <div class="form-group">
+      <label>Email address</label>
+      <input type="email" id="loginEmail" placeholder="you@example.com" autocomplete="email">
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <div class="password-wrap">
+        <input type="password" id="loginPassword" placeholder="Your password" autocomplete="current-password">
+        <button class="toggle-pass" onclick="togglePass('loginPassword', this)">👁</button>
+      </div>
+    </div>
+    <button class="btn-submit" onclick="handleLogin()" id="btnLogin">
+      Sign in →
+    </button>
+    <div class="form-footer" style="margin-top:16px">
+      Don't have an account? <a onclick="switchMode('signup')">Create one</a>
+    </div>
+  </div>
+
+  <!-- SIGNUP FORM -->
+  <div id="signupForm" style="display:none">
+    <div class="form-header">
+      <h1>Get started</h1>
+      <p>Create your EventTrax account</p>
+    </div>
+
+    <!-- Role selection -->
+    <div class="role-selector" id="roleSelector">
+      <label class="role-option" id="roleAdmin" onclick="selectRole('admin')">
+        <input type="radio" name="role" value="admin">
+        <div class="role-emoji">👩‍💼</div>
+        <div class="role-name">Admin</div>
+        <div class="role-desc">Create & manage events</div>
+      </label>
+      <label class="role-option participant-role" id="roleParticipant" onclick="selectRole('participant')">
+        <input type="radio" name="role" value="participant" checked>
+        <div class="role-emoji">👨‍🎓</div>
+        <div class="role-name">Participant</div>
+        <div class="role-desc">Join & attend events</div>
+      </label>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Full name</label>
+        <input type="text" id="signupName" placeholder="Jane Doe">
+      </div>
+      <div class="form-group">
+        <label>Organization</label>
+        <input type="text" id="signupOrg" placeholder="Your company (optional)">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Email address</label>
+      <input type="email" id="signupEmail" placeholder="you@example.com" autocomplete="email">
+    </div>
+
+    <div class="form-group">
+      <label>Password</label>
+      <div class="password-wrap">
+        <input type="password" id="signupPassword" placeholder="Minimum 6 characters" autocomplete="new-password" oninput="checkStrength(this.value)">
+        <button class="toggle-pass" onclick="togglePass('signupPassword', this)">👁</button>
+      </div>
+      <div class="strength-bar"><div class="strength-fill" id="strengthFill"></div></div>
+    </div>
+
+    <button class="btn-submit" onclick="handleSignup()" id="btnSignup">
+      Create account →
+    </button>
+
+    <div class="form-footer">
+      Already have an account? <a onclick="switchMode('login')">Sign in</a>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script>
+  let selectedRole = 'participant';
+
+  // Init from URL params
+  window.addEventListener('load', () => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('mode') === 'signup') switchMode('signup');
+    if (params.get('role')) selectRole(params.get('role'));
+    checkExistingSession();
+  });
+
+  async function checkExistingSession() {
+    const session = await getSession();
+    if (session) {
+      const user = await getCurrentUser();
+      redirectByRole(user?.role);
+    }
+  }
+
+  function redirectByRole(role) {
+    window.location.href = role === 'admin' ? 'admin.html' : 'participant.html';
+  }
+
+  function switchMode(mode) {
+    const isLogin = mode === 'login';
+    document.getElementById('loginForm').style.display = isLogin ? 'block' : 'none';
+    document.getElementById('signupForm').style.display = isLogin ? 'none' : 'block';
+    document.getElementById('tabLogin').classList.toggle('active', isLogin);
+    document.getElementById('tabSignup').classList.toggle('active', !isLogin);
+    clearErrors();
+  }
+
+  function selectRole(role) {
+    selectedRole = role;
+    document.getElementById('roleAdmin').classList.toggle('selected', role === 'admin');
+    document.getElementById('roleParticipant').classList.toggle('selected', role === 'participant');
+  }
+
+  function togglePass(id, btn) {
+    const input = document.getElementById(id);
+    const isPass = input.type === 'password';
+    input.type = isPass ? 'text' : 'password';
+    btn.textContent = isPass ? '🙈' : '👁';
+  }
+
+  function checkStrength(pass) {
+    const fill = document.getElementById('strengthFill');
+    let score = 0;
+    if (pass.length >= 6) score++;
+    if (pass.length >= 10) score++;
+    if (/[A-Z]/.test(pass)) score++;
+    if (/[0-9]/.test(pass)) score++;
+    if (/[^a-zA-Z0-9]/.test(pass)) score++;
+    const colors = ['#ef4444', '#f59e0b', '#f59e0b', '#00d4aa', '#00d4aa'];
+    const widths = ['20%', '40%', '60%', '80%', '100%'];
+    fill.style.width = score > 0 ? widths[score - 1] : '0';
+    fill.style.background = score > 0 ? colors[score - 1] : '';
+  }
+
+  function showError(msg) {
+    const el = document.getElementById('globalError');
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+
+  function clearErrors() {
+    document.getElementById('globalError').style.display = 'none';
+  }
+
+  async function handleLogin() {
+    clearErrors();
+    const email = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    if (!email || !password) return showError('Please fill in all fields.');
+
+    const btn = document.getElementById('btnLogin');
+    showLoading(btn, 'Signing in...');
+
+    try {
+      const { data, error } = await db.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+
+      const user = await getCurrentUser();
+      toast('Welcome back! 👋', 'success');
+      setTimeout(() => redirectByRole(user?.role), 800);
+    } catch (err) {
+      hideLoading(btn);
+      showError(err.message === 'Invalid login credentials'
+        ? 'Incorrect email or password. Please try again.'
+        : err.message);
+    }
+  }
+
+  async function handleSignup() {
+    clearErrors();
+    const name = document.getElementById('signupName').value.trim();
+    const email = document.getElementById('signupEmail').value.trim();
+    const password = document.getElementById('signupPassword').value;
+    const org = document.getElementById('signupOrg').value.trim();
+
+    if (!name || !email || !password) return showError('Please fill in all required fields.');
+    if (password.length < 6) return showError('Password must be at least 6 characters.');
+
+    const btn = document.getElementById('btnSignup');
+    showLoading(btn, 'Creating account...');
+
+    try {
+      const { data, error } = await db.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: name,
+            role: selectedRole,
+            organization: org
+          }
+        }
+      });
+
+      if (error) throw error;
+
+      if (data.user && !data.session) {
+        hideLoading(btn);
+        showError('Please check your email to confirm your account, then sign in.');
+        return;
+      }
+
+      // Manually insert profile in case trigger doesn't fire
+      if (data.user) {
+        await db.from('profiles').upsert({
+          id: data.user.id,
+          full_name: name,
+          role: selectedRole,
+          organization: org
+        });
+      }
+
+      toast('Account created! Welcome to EventTrax 🎉', 'success');
+      setTimeout(() => redirectByRole(selectedRole), 800);
+    } catch (err) {
+      hideLoading(btn);
+      if (err.message.includes('already registered')) {
+        showError('This email is already registered. Try signing in instead.');
+      } else {
+        showError(err.message);
+      }
+    }
+  }
+
+  // Enter key submit
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      const isLogin = document.getElementById('loginForm').style.display !== 'none';
+      isLogin ? handleLogin() : handleSignup();
+    }
+  });
+
+  // Init tabs
+  switchMode('login');
+</script>
+</body>
+</html>
