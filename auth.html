@@ -675,7 +675,26 @@
 
   // Init tabs
   switchMode('login');
+  async function handleForgotPassword() {
+  const email = document.getElementById("loginEmail").value.trim();
+
+  if (!email) {
+    showError("Enter your email first.");
+    return;
+  }
+
+  const { error } = await db.auth.resetPasswordForEmail(email, {
+    redirectTo: "https://aruna24799.github.io/eventtrax-clean/reset.html"
+  });
+
+  if (error) {
+    showError(error.message);
+  } else {
+    alert("Password reset link sent to your email.");
+  }
+}
 </script>
 </body>
 </html>
+
 
