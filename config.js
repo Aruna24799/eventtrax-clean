@@ -1,8 +1,10 @@
+
+
+
 const SUPABASE_URL = 'https://pxtpsugbuunjzurdvzkc.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4dHBzdWdidXVuanp1cmR2emtjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NDY4OTIsImV4cCI6MjA4NjEyMjg5Mn0.VXRKe2AXSiv8vRxfoPDyBl9McRmkYDVUBcRN2Jy6q5g';
-
 // Init Supabase client
-const { createClient } = window.supabase;
+const { createClient } = supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ─── Auth Helpers ───────────────────────────────────────────
@@ -325,6 +327,7 @@ async function checkSupabaseConnection() {
   }
   return true;
 }
+
 
 
 
