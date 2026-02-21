@@ -1,30 +1,85 @@
 <!DOCTYPE html>
 <html>
 <head>
+<meta charset="UTF-8">
 <title>Reset Password</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="config.js"></script>
+
+<style>
+body{
+margin:0;
+font-family:Arial;
+background:#050510;
+color:white;
+display:flex;
+justify-content:center;
+align-items:center;
+height:100vh
+}
+.box{
+background:#0a0a18;
+padding:40px;
+border-radius:12px;
+width:300px
+}
+input{
+width:100%;
+padding:12px;
+margin:10px 0;
+border-radius:8px;
+border:none
+}
+button{
+width:100%;
+padding:12px;
+border:none;
+border-radius:8px;
+background:#00d4aa;
+font-weight:bold
+}
+</style>
 </head>
 
-<body style="background:#080810;color:white;font-family:sans-serif;padding:40px">
+<body>
 
-<h2>Reset your password</h2>
+<div class="box">
+<h2>Reset Password</h2>
 
-<input id="newpass" type="password" placeholder="New password"><br><br>
+<input id="newpass" type="password" placeholder="New password">
 
 <button onclick="reset()">Update Password</button>
 
 <p id="msg"></p>
 
+</div>
+
 <script>
-async function reset() {
-  const pass = document.getElementById("newpass").value;
 
-  const { error } = await db.auth.updateUser({ password: pass });
+const SUPABASE_URL="https://pxtpsugbuunjzurdvzkc.supabase.co";
+const SUPABASE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4dHBzdWdidXVuanp1cmR2emtjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NDY4OTIsImV4cCI6MjA4NjEyMjg5Mn0.VXRKe2AXSiv8vRxfoPDyBl9McRmkYDVUBcRN2Jy6q5g";
 
-  document.getElementById("msg").innerText =
-    error ? error.message : "Password updated! You can login now.";
+const db=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+
+async function reset(){
+
+const pass=document.getElementById("newpass").value;
+
+if(pass.length<6){
+document.getElementById("msg").innerText="Minimum 6 characters";
+return;
 }
+
+const {error}=await db.auth.updateUser({password:pass});
+
+if(error){
+document.getElementById("msg").innerText=error.message;
+return;
+}
+
+alert("Password updated. Login again.");
+location.href="auth.html";
+}
+
 </script>
 
 </body>
