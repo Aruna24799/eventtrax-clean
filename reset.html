@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Reset Password</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+</head>
+
+<body style="background:#080810;color:white;font-family:sans-serif;padding:40px">
+
+<h2>Reset your password</h2>
+
+<input id="newpass" type="password" placeholder="New password"><br><br>
+
+<button onclick="reset()">Update Password</button>
+
+<p id="msg"></p>
+
+<script>
+async function reset() {
+  const pass = document.getElementById("newpass").value;
+
+  const { error } = await db.auth.updateUser({ password: pass });
+
+  document.getElementById("msg").innerText =
+    error ? error.message : "Password updated! You can login now.";
+}
+</script>
+
+</body>
+</html>
