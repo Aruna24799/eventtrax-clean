@@ -508,13 +508,12 @@
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script>
   let selectedRole = 'participant';
 
-  // Init from URL params
-  window.addEventListener('load', () => {
+  // ── FIX 3: Changed from window.addEventListener('load') to DOMContentLoaded ──
+  document.addEventListener('DOMContentLoaded', () => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('mode') === 'signup') switchMode('signup');
     if (params.get('role')) selectRole(params.get('role'));
