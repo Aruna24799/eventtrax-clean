@@ -1,4 +1,1516 @@
-<!DOCTYPE html>
+<!DOCTYPE html>  <html lang="en">  
+<head>  
+  <meta charset="UTF-8">  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">  
+  <title>EventTrax — Admin Dashboard</title>  
+  <link rel="preconnect" href="https://fonts.googleapis.com">  
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">  
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>  
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>  
+  <style>  
+    :root {  
+      --bg: #080810;  
+      --surface: #0e0e1a;  
+      --surface2: #141424;  
+      --surface3: #1a1a2e;  
+      --border: rgba(255,255,255,0.07);  
+      --primary: #00d4aa;  
+      --primary-dim: rgba(0,212,170,0.1);  
+      --secondary: #6366f1;  
+      --accent: #f59e0b;  
+      --red: #ef4444;  
+      --green: #22c55e;  
+      --text: #f1f1f5;  
+      --muted: rgba(241,241,245,0.45);  
+      --font-head: 'Syne', sans-serif;  
+      --font-body: 'DM Sans', sans-serif;  
+      --sidebar: 260px;  
+    }  
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }  
+    body {  
+      font-family: var(--font-body);  
+      background: var(--bg);  
+      color: var(--text);  
+      display: flex;  
+      min-height: 100vh;  
+    }  /* ── SIDEBAR ── */  
+.sidebar {  
+  width: var(--sidebar);  
+  background: var(--surface);  
+  border-right: 1px solid var(--border);  
+  display: flex;  
+  flex-direction: column;  
+  position: fixed;  
+  top: 0; left: 0; bottom: 0;  
+  z-index: 100;  
+}  
+
+.sidebar-logo {  
+  padding: 24px;  
+  border-bottom: 1px solid var(--border);  
+  display: flex;  
+  align-items: center;  
+  gap: 10px;  
+  font-family: var(--font-head);  
+  font-size: 18px;  
+  font-weight: 800;  
+}  
+
+.logo-icon {  
+  width: 32px; height: 32px;  
+  background: linear-gradient(135deg, var(--primary), var(--secondary));  
+  border-radius: 8px;  
+  display: flex; align-items: center; justify-content: center;  
+  font-size: 16px;  
+}  
+
+.sidebar-label {  
+  padding: 20px 24px 8px;  
+  font-size: 10px;  
+  font-weight: 700;  
+  text-transform: uppercase;  
+  letter-spacing: 2px;  
+  color: var(--muted);  
+}  
+
+nav { flex: 1; padding: 8px 12px; }  
+
+.nav-item {  
+  display: flex;  
+  align-items: center;  
+  gap: 12px;  
+  padding: 12px 16px;  
+  border-radius: 10px;  
+  font-size: 14px;  
+  font-weight: 500;  
+  color: var(--muted);  
+  cursor: pointer;  
+  transition: all 0.2s;  
+  margin-bottom: 2px;  
+  border: none;  
+  background: none;  
+  width: 100%;  
+  text-align: left;  
+}  
+.nav-item:hover { background: rgba(255,255,255,0.04); color: var(--text); }  
+.nav-item.active {  
+  background: rgba(0,212,170,0.1);  
+  color: var(--primary);  
+  font-weight: 600;  
+}  
+.nav-item .icon { font-size: 18px; width: 24px; text-align: center; }  
+
+.sidebar-user {  
+  padding: 20px 24px;  
+  border-top: 1px solid var(--border);  
+  display: flex;  
+  align-items: center;  
+  gap: 12px;  
+}  
+
+.user-avatar {  
+  width: 38px; height: 38px;  
+  background: linear-gradient(135deg, var(--primary), var(--secondary));  
+  border-radius: 50%;  
+  display: flex; align-items: center; justify-content: center;  
+  font-weight: 700;  
+  font-size: 16px;  
+  color: #000;  
+  flex-shrink: 0;  
+}  
+
+.user-info { flex: 1; min-width: 0; }  
+.user-name { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }  
+.user-role {  
+  font-size: 11px; color: var(--primary);  
+  background: rgba(0,212,170,0.08);  
+  padding: 2px 8px;  
+  border-radius: 100px;  
+  display: inline-block;  
+  margin-top: 2px;  
+}  
+
+.btn-logout {  
+  background: none;  
+  border: none;  
+  color: var(--muted);  
+  cursor: pointer;  
+  font-size: 18px;  
+  padding: 4px;  
+  transition: color 0.2s;  
+}  
+.btn-logout:hover { color: var(--red); }  
+
+/* ── MAIN ── */  
+.main {  
+  margin-left: var(--sidebar);  
+  flex: 1;  
+  min-height: 100vh;  
+}  
+
+/* Top bar */  
+.topbar {  
+  height: 64px;  
+  border-bottom: 1px solid var(--border);  
+  display: flex;  
+  align-items: center;  
+  justify-content: space-between;  
+  padding: 0 32px;  
+  background: rgba(8,8,16,0.8);  
+  backdrop-filter: blur(20px);  
+  position: sticky;  
+  top: 0;  
+  z-index: 50;  
+}  
+
+.topbar-title {  
+  font-family: var(--font-head);  
+  font-size: 18px;  
+  font-weight: 700;  
+}  
+
+.topbar-actions { display: flex; align-items: center; gap: 12px; }  
+
+.btn-primary {  
+  padding: 10px 20px;  
+  background: linear-gradient(135deg, var(--primary), #00b894);  
+  color: #000;  
+  border: none;  
+  border-radius: 10px;  
+  font-family: var(--font-body);  
+  font-size: 14px;  
+  font-weight: 700;  
+  cursor: pointer;  
+  display: flex;  
+  align-items: center;  
+  gap: 8px;  
+  transition: all 0.2s;  
+}  
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(0,212,170,0.3); }  
+.btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }  
+
+.btn-secondary {  
+  padding: 10px 16px;  
+  background: var(--surface2);  
+  color: var(--text);  
+  border: 1px solid var(--border);  
+  border-radius: 10px;  
+  font-family: var(--font-body);  
+  font-size: 14px;  
+  font-weight: 500;  
+  cursor: pointer;  
+  transition: all 0.2s;  
+}  
+.btn-secondary:hover { border-color: rgba(255,255,255,0.15); background: var(--surface3); }  
+
+/* ── PAGES ── */  
+.page { display: none; padding: 32px; }  
+.page.active { display: block; }  
+
+/* ── STAT CARDS ── */  
+.stats-row {  
+  display: grid;  
+  grid-template-columns: repeat(4, 1fr);  
+  gap: 20px;  
+  margin-bottom: 32px;  
+}  
+
+.stat-card {  
+  background: var(--surface);  
+  border: 1px solid var(--border);  
+  border-radius: 16px;  
+  padding: 24px;  
+  transition: all 0.2s;  
+}  
+.stat-card:hover { border-color: rgba(255,255,255,0.12); }  
+
+.stat-label-top {  
+  font-size: 12px;  
+  font-weight: 600;  
+  text-transform: uppercase;  
+  letter-spacing: 1px;  
+  color: var(--muted);  
+  margin-bottom: 12px;  
+  display: flex;  
+  align-items: center;  
+  gap: 8px;  
+}  
+
+.stat-value-big {  
+  font-family: var(--font-head);  
+  font-size: 40px;  
+  font-weight: 800;  
+  line-height: 1;  
+  margin-bottom: 8px;  
+}  
+
+.stat-change {  
+  font-size: 13px;  
+  display: flex;  
+  align-items: center;  
+  gap: 4px;  
+}  
+.stat-change.up { color: var(--green); }  
+.stat-change.neutral { color: var(--muted); }  
+
+/* ── CHARTS GRID ── */  
+.charts-grid {  
+  display: grid;  
+  grid-template-columns: 2fr 1fr;  
+  gap: 20px;  
+  margin-bottom: 32px;  
+}  
+
+.chart-card {  
+  background: var(--surface);  
+  border: 1px solid var(--border);  
+  border-radius: 16px;  
+  padding: 24px;  
+}  
+
+.card-header {  
+  display: flex;  
+  align-items: center;  
+  justify-content: space-between;  
+  margin-bottom: 24px;  
+}  
+
+.card-title {  
+  font-family: var(--font-head);  
+  font-size: 16px;  
+  font-weight: 700;  
+}  
+
+.card-sub { font-size: 13px; color: var(--muted); margin-top: 2px; }  
+
+/* ── EVENTS TABLE ── */  
+.table-wrap {  
+  background: var(--surface);  
+  border: 1px solid var(--border);  
+  border-radius: 16px;  
+  overflow: hidden;  
+}  
+
+.table-toolbar {  
+  display: flex;  
+  align-items: center;  
+  justify-content: space-between;  
+  padding: 20px 24px;  
+  border-bottom: 1px solid var(--border);  
+}  
+
+.search-input {  
+  display: flex;  
+  align-items: center;  
+  gap: 10px;  
+  background: var(--surface2);  
+  border: 1px solid var(--border);  
+  border-radius: 8px;  
+  padding: 8px 14px;  
+  width: 280px;  
+}  
+
+.search-input input {  
+  background: none;  
+  border: none;  
+  outline: none;  
+  color: var(--text);  
+  font-family: var(--font-body);  
+  font-size: 14px;  
+  width: 100%;  
+}  
+.search-input input::placeholder { color: var(--muted); }  
+
+table { width: 100%; border-collapse: collapse; }  
+
+th {  
+  padding: 12px 20px;  
+  text-align: left;  
+  font-size: 11px;  
+  font-weight: 700;  
+  text-transform: uppercase;  
+  letter-spacing: 1px;  
+  color: var(--muted);  
+  border-bottom: 1px solid var(--border);  
+  background: var(--surface);  
+}  
+
+td {  
+  padding: 16px 20px;  
+  font-size: 14px;  
+  border-bottom: 1px solid rgba(255,255,255,0.03);  
+}  
+
+tr:last-child td { border-bottom: none; }  
+tr:hover td { background: rgba(255,255,255,0.02); }  
+
+.status-badge {  
+  display: inline-flex;  
+  align-items: center;  
+  gap: 6px;  
+  padding: 4px 10px;  
+  border-radius: 100px;  
+  font-size: 12px;  
+  font-weight: 600;  
+}  
+
+.badge-dot { width: 6px; height: 6px; border-radius: 50%; }  
+
+.btn-icon {  
+  width: 32px; height: 32px;  
+  border: 1px solid var(--border);  
+  background: var(--surface2);  
+  border-radius: 8px;  
+  display: inline-flex;  
+  align-items: center;  
+  justify-content: center;  
+  cursor: pointer;  
+  transition: all 0.2s;  
+  font-size: 14px;  
+}  
+.btn-icon:hover { border-color: rgba(255,255,255,0.2); background: var(--surface3); }  
+
+/* ── CREATE EVENT MODAL ── */  
+.modal-overlay {  
+  position: fixed;  
+  inset: 0;  
+  background: rgba(0,0,0,0.7);  
+  backdrop-filter: blur(8px);  
+  z-index: 200;  
+  display: none;  
+  align-items: center;  
+  justify-content: center;  
+}  
+.modal-overlay.open { display: flex; }  
+
+.modal {  
+  background: var(--surface);  
+  border: 1px solid var(--border);  
+  border-radius: 24px;  
+  padding: 40px;  
+  width: 600px;  
+  max-width: 95vw;  
+  max-height: 90vh;  
+  overflow-y: auto;  
+  position: relative;  
+}  
+
+.modal h2 {  
+  font-family: var(--font-head);  
+  font-size: 24px;  
+  font-weight: 800;  
+  margin-bottom: 8px;  
+}  
+
+.modal-sub { color: var(--muted); font-size: 14px; margin-bottom: 32px; }  
+
+.close-btn {  
+  position: absolute;  
+  top: 20px; right: 20px;  
+  width: 36px; height: 36px;  
+  border: 1px solid var(--border);  
+  background: var(--surface2);  
+  border-radius: 8px;  
+  display: flex; align-items: center; justify-content: center;  
+  cursor: pointer;  
+  font-size: 18px;  
+  color: var(--muted);  
+  transition: all 0.2s;  
+}  
+.close-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }  
+
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }  
+.form-group { margin-bottom: 20px; }  
+
+label {  
+  display: block;  
+  font-size: 12px;  
+  font-weight: 600;  
+  color: var(--muted);  
+  margin-bottom: 8px;  
+  text-transform: uppercase;  
+  letter-spacing: 0.5px;  
+}  
+
+input[type="text"], input[type="date"], input[type="time"],  
+input[type="number"], select, textarea {  
+  width: 100%;  
+  padding: 12px 14px;  
+  background: var(--surface2);  
+  border: 1px solid var(--border);  
+  border-radius: 10px;  
+  color: var(--text);  
+  font-family: var(--font-body);  
+  font-size: 14px;  
+  transition: all 0.2s;  
+  outline: none;  
+}  
+
+input:focus, select:focus, textarea:focus {  
+  border-color: var(--primary);  
+  box-shadow: 0 0 0 3px rgba(0,212,170,0.08);  
+}  
+
+input::placeholder, textarea::placeholder { color: var(--muted); }  
+textarea { resize: vertical; min-height: 80px; }  
+select option { background: #1e1e30; }  
+
+/* Color picker row */  
+.color-row {  
+  display: flex;  
+  gap: 10px;  
+  flex-wrap: wrap;  
+}  
+
+.color-swatch {  
+  width: 36px; height: 36px;  
+  border-radius: 8px;  
+  cursor: pointer;  
+  border: 2px solid transparent;  
+  transition: all 0.2s;  
+}  
+.color-swatch.selected { border-color: #fff; transform: scale(1.15); }  
+
+/* ── PARTICIPANTS VIEW ── */  
+.participant-card {  
+  background: var(--surface);  
+  border: 1px solid var(--border);  
+  border-radius: 12px;  
+  padding: 16px 20px;  
+  display: flex;  
+  align-items: center;  
+  gap: 16px;  
+  margin-bottom: 12px;  
+  transition: all 0.2s;  
+}  
+.participant-card:hover { border-color: rgba(255,255,255,0.12); }  
+
+.p-avatar {  
+  width: 40px; height: 40px;  
+  border-radius: 50%;  
+  background: linear-gradient(135deg, var(--secondary), #818cf8);  
+  display: flex; align-items: center; justify-content: center;  
+  font-weight: 700; font-size: 16px; color: #fff;  
+  flex-shrink: 0;  
+}  
+
+.p-info { flex: 1; }  
+.p-name { font-size: 15px; font-weight: 600; }  
+.p-meta { font-size: 13px; color: var(--muted); margin-top: 2px; }  
+
+/* Attendance toggle */  
+.attendance-toggle {  
+  width: 44px; height: 24px;  
+  background: var(--surface3);  
+  border: 1px solid var(--border);  
+  border-radius: 100px;  
+  cursor: pointer;  
+  position: relative;  
+  transition: all 0.3s;  
+  flex-shrink: 0;  
+}  
+.attendance-toggle.attended { background: var(--primary); border-color: var(--primary); }  
+.attendance-toggle::after {  
+  content: '';  
+  position: absolute;  
+  top: 3px; left: 3px;  
+  width: 16px; height: 16px;  
+  border-radius: 50%;  
+  background: var(--muted);  
+  transition: all 0.3s;  
+}  
+.attendance-toggle.attended::after { left: 22px; background: #000; }  
+
+/* ── FEEDBACK VIEW ── */  
+.feedback-card {  
+  background: var(--surface);  
+  border: 1px solid var(--border);  
+  border-radius: 12px;  
+  padding: 20px;  
+  margin-bottom: 12px;  
+}  
+
+.stars {  
+  display: flex;  
+  gap: 4px;  
+  margin-bottom: 10px;  
+}  
+.star { font-size: 16px; color: var(--muted); }  
+.star.filled { color: var(--accent); }  
+
+/* ── EMPTY STATE ── */  
+.empty-state {  
+  text-align: center;  
+  padding: 80px 40px;  
+  color: var(--muted);  
+}  
+.empty-icon { font-size: 48px; margin-bottom: 16px; }  
+.empty-state h3 { font-family: var(--font-head); font-size: 20px; font-weight: 700; color: var(--text); margin-bottom: 8px; }  
+.empty-state p { font-size: 14px; line-height: 1.6; }  
+
+/* ── ANALYTICS ── */  
+.analytics-grid {  
+  display: grid;  
+  grid-template-columns: 1fr 1fr;  
+  gap: 20px;  
+}  
+
+/* ── SPINNER ── */  
+.spinner {  
+  width: 16px; height: 16px;  
+  border: 2px solid rgba(0,0,0,0.2);  
+  border-top-color: #000;  
+  border-radius: 50%;  
+  animation: spin 0.7s linear infinite;  
+  display: inline-block;  
+}  
+@keyframes spin { to { transform: rotate(360deg); } }  
+
+.page-spinner {  
+  display: flex;  
+  align-items: center;  
+  justify-content: center;  
+  padding: 80px;  
+}  
+.page-spinner .sp {  
+  width: 40px; height: 40px;  
+  border: 3px solid rgba(0,212,170,0.15);  
+  border-top-color: var(--primary);  
+  border-radius: 50%;  
+  animation: spin 0.8s linear infinite;  
+}  
+
+.select-event-bar {  
+  display: flex;  
+  align-items: center;  
+  gap: 16px;  
+  padding: 16px 0;  
+  margin-bottom: 24px;  
+}  
+
+.select-event-bar select {  
+  flex: 1;  
+  max-width: 400px;  
+}  
+
+.tag-row { display: flex; gap: 6px; flex-wrap: wrap; }  
+.tag {  
+  padding: 3px 10px;  
+  background: rgba(99,102,241,0.1);  
+  border: 1px solid rgba(99,102,241,0.2);  
+  border-radius: 100px;  
+  font-size: 11px;  
+  color: #818cf8;  
+}  
+
+/* Responsive */  
+@media (max-width: 1024px) {  
+  :root { --sidebar: 70px; }  
+  .nav-item span, .sidebar-label, .user-info, .sidebar-logo span { display: none; }  
+  .sidebar-logo { justify-content: center; }  
+  .sidebar-user { justify-content: center; }  
+  .nav-item { justify-content: center; padding: 14px; }  
+  .stats-row { grid-template-columns: repeat(2, 1fr); }  
+  .charts-grid { grid-template-columns: 1fr; }  
+  .analytics-grid { grid-template-columns: 1fr; }  
+}  
+
+@media (max-width: 640px) {  
+  .main { margin-left: 0; }  
+  .sidebar { transform: translateX(-100%); }  
+  .stats-row { grid-template-columns: repeat(2, 1fr); }  
+  .page { padding: 16px; }  
+}
+
+  </style>  
+</head>  
+<body>  <!-- SIDEBAR -->  <aside class="sidebar">  
+  <div class="sidebar-logo">  
+    <div class="logo-icon">⬡</div>  
+    <span>EventTrax</span>  
+  </div>    <nav>  
+    <div class="sidebar-label">Main</div>  
+    <button class="nav-item active" onclick="showPage('dashboard')">  
+      <span class="icon">📊</span>  
+      <span>Dashboard</span>  
+    </button>  
+    <button class="nav-item" onclick="showPage('events')">  
+      <span class="icon">🗓</span>  
+      <span>My Events</span>  
+    </button>  
+    <button class="nav-item" onclick="showPage('create')">  
+      <span class="icon">✚</span>  
+      <span>Create Event</span>  
+    </button>  <div class="sidebar-label">Manage</div>  
+<button class="nav-item" onclick="showPage('participants')">  
+  <span class="icon">👥</span>  
+  <span>Participants</span>  
+</button>  
+<button class="nav-item" onclick="showPage('attendance')">  
+  <span class="icon">📱</span>  
+  <span>Attendance</span>  
+</button>  
+<button class="nav-item" onclick="showPage('feedback')">  
+  <span class="icon">⭐</span>  
+  <span>Feedback</span>  
+</button>  
+<button class="nav-item" onclick="showPage('certificates')">  
+  <span class="icon">🏆</span>  
+  <span>Certificates</span>  
+</button>  
+<button class="nav-item" onclick="showPage('analytics')">  
+  <span class="icon">📈</span>  
+  <span>Analytics</span>  
+</button>
+
+  </nav>    <div class="sidebar-user">  
+    <div class="user-avatar" id="sidebarAvatar">A</div>  
+    <div class="user-info">  
+      <div class="user-name" id="sidebarName">Loading...</div>  
+      <div class="user-role">Admin</div>  
+    </div>  
+    <button class="btn-logout" onclick="logout()" title="Logout">↪</button>  
+  </div>  
+</aside>  <!-- MAIN -->  <div class="main">    <!-- TOPBAR -->    <div class="topbar">  
+    <div class="topbar-title" id="topbarTitle">Dashboard</div>  
+    <div class="topbar-actions">  
+      <button class="btn-secondary" onclick="showPage('analytics')">📈 Analytics</button>  
+      <button class="btn-primary" onclick="showPage('create')">✚ New Event</button>  
+    </div>  
+  </div>    <!-- DASHBOARD PAGE -->    <div class="page active" id="page-dashboard">  
+    <div class="stats-row" id="statsRow">  
+      <div class="stat-card">  
+        <div class="stat-label-top">🗓 Total Events</div>  
+        <div class="stat-value-big" id="statEvents">—</div>  
+        <div class="stat-change neutral">Across all statuses</div>  
+      </div>  
+      <div class="stat-card">  
+        <div class="stat-label-top">👥 Registrations</div>  
+        <div class="stat-value-big" id="statRegistrations">—</div>  
+        <div class="stat-change up">↑ Total participants</div>  
+      </div>  
+      <div class="stat-card">  
+        <div class="stat-label-top">✓ Attended</div>  
+        <div class="stat-value-big" id="statAttended">—</div>  
+        <div class="stat-change up" id="statAttRate">— attendance rate</div>  
+      </div>  
+      <div class="stat-card">  
+        <div class="stat-label-top">⭐ Avg Rating</div>  
+        <div class="stat-value-big" id="statRating">—</div>  
+        <div class="stat-change up">From participant feedback</div>  
+      </div>  
+    </div>  <div class="charts-grid">  
+  <div class="chart-card">  
+    <div class="card-header">  
+      <div>  
+        <div class="card-title">Registration Trend</div>  
+        <div class="card-sub">Events by status</div>  
+      </div>  
+    </div>  
+    <canvas id="registrationsChart" height="200"></canvas>  
+  </div>  
+  <div class="chart-card">  
+    <div class="card-header">  
+      <div>  
+        <div class="card-title">Events by Category</div>  
+        <div class="card-sub">Distribution</div>  
+      </div>  
+    </div>  
+    <canvas id="categoryChart" height="200"></canvas>  
+  </div>  
+</div>  
+
+<!-- Recent events -->  
+<div class="table-wrap">  
+  <div class="table-toolbar">  
+    <div class="card-title">Recent Events</div>  
+    <button class="btn-secondary" onclick="showPage('events')">View all →</button>  
+  </div>  
+  <div id="recentEventsTable">  
+    <div class="page-spinner"><div class="sp"></div></div>  
+  </div>  
+</div>
+
+  </div>    <!-- EVENTS PAGE -->    <div class="page" id="page-events">  
+    <div class="table-wrap">  
+      <div class="table-toolbar">  
+        <div>  
+          <div class="card-title">My Events</div>  
+          <div class="card-sub">All events you've created</div>  
+        </div>  
+        <div style="display:flex;gap:12px;align-items:center">  
+          <div class="search-input">  
+            <span>🔍</span>  
+            <input type="text" id="eventsSearch" placeholder="Search events..." oninput="filterEvents()">  
+          </div>  
+          <button class="btn-primary" onclick="showPage('create')">✚ New Event</button>  
+        </div>  
+      </div>  
+      <div id="eventsTableBody">  
+        <div class="page-spinner"><div class="sp"></div></div>  
+      </div>  
+    </div>  
+  </div>    <!-- CREATE EVENT PAGE -->    <div class="page" id="page-create">  
+    <div style="max-width:700px;margin:0 auto">  
+      <div style="margin-bottom:32px">  
+        <h2 style="font-family:var(--font-head);font-size:28px;font-weight:800;margin-bottom:8px">Create New Event</h2>  
+        <p style="color:var(--muted)">Fill in the details to publish your event on EventTrax.</p>  
+      </div>  <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:40px">  
+    <div class="form-group">  
+      <label>Event Title *</label>  
+      <input type="text" id="evTitle" placeholder="e.g. Web Dev Summit 2026">  
+    </div>  
+    <div class="form-group">  
+      <label>Description</label>  
+      <textarea id="evDesc" placeholder="Tell participants what this event is about..."></textarea>  
+    </div>  
+    <div class="form-row">  
+      <div class="form-group">  
+        <label>Category</label>  
+        <select id="evCat">  
+          <option>Tech</option><option>Business</option><option>Design</option>  
+          <option>Marketing</option><option>Science</option><option>Art</option>  
+          <option>Health</option><option>Education</option><option>Sports</option>  
+          <option>Music</option><option>General</option>  
+        </select>  
+      </div>  
+      <div class="form-group">  
+        <label>Location *</label>  
+        <input type="text" id="evLocation" placeholder="Virtual / City, Country">  
+      </div>  
+    </div>  
+    <div class="form-row">  
+      <div class="form-group">  
+        <label>Date *</label>  
+        <input type="date" id="evDate">  
+      </div>  
+      <div class="form-group">  
+        <label>Start Time *</label>  
+        <input type="time" id="evTime">  
+      </div>  
+    </div>  
+    <div class="form-row">  
+      <div class="form-group">  
+        <label>End Time</label>  
+        <input type="time" id="evEndTime">  
+      </div>  
+      <div class="form-group">  
+        <label>Capacity</label>  
+        <input type="number" id="evCapacity" placeholder="100" min="1">  
+      </div>  
+    </div>  
+    <div class="form-group">  
+      <label>Requirements / Notes</label>  
+      <textarea id="evRequirements" placeholder="Any prerequisites or notes for participants..."></textarea>  
+    </div>  
+    <div class="form-group">  
+      <label>Banner Color</label>  
+      <div class="color-row" id="colorRow">  
+        <div class="color-swatch selected" style="background:#00d4aa" data-color="#00d4aa" onclick="selectColor(this)"></div>  
+        <div class="color-swatch" style="background:#6366f1" data-color="#6366f1" onclick="selectColor(this)"></div>  
+        <div class="color-swatch" style="background:#f59e0b" data-color="#f59e0b" onclick="selectColor(this)"></div>  
+        <div class="color-swatch" style="background:#ef4444" data-color="#ef4444" onclick="selectColor(this)"></div>  
+        <div class="color-swatch" style="background:#ec4899" data-color="#ec4899" onclick="selectColor(this)"></div>  
+        <div class="color-swatch" style="background:#8b5cf6" data-color="#8b5cf6" onclick="selectColor(this)"></div>  
+      </div>  
+    </div>  
+    <div class="form-group">  
+      <label>Status</label>  
+      <select id="evStatus">  
+        <option value="draft">Draft (not visible)</option>  
+        <option value="open">Open (accepting registrations)</option>  
+      </select>  
+    </div>  
+    <button class="btn-primary" onclick="createEvent()" id="btnCreate" style="width:100%;padding:14px;font-size:15px">  
+      ✚ Create Event  
+    </button>  
+  </div>  
+</div>
+
+  </div>    <!-- PARTICIPANTS PAGE -->    <div class="page" id="page-participants">  
+    <div class="select-event-bar">  
+      <select id="participantsEventSelect" onchange="loadParticipants()" style="max-width:400px">  
+        <option value="">Select an event...</option>  
+      </select>  
+      <span id="participantsCount" style="color:var(--muted);font-size:14px"></span>  
+    </div>  
+    <div id="participantsList">  
+      <div class="empty-state">  
+        <div class="empty-icon">👥</div>  
+        <h3>Select an event</h3>  
+        <p>Choose an event above to view its participants.</p>  
+      </div>  
+    </div>  
+  </div>    <!-- ATTENDANCE PAGE -->    <div class="page" id="page-attendance">  
+    <div style="max-width:700px;margin:0 auto">  
+      <div style="margin-bottom:24px">  
+        <h2 style="font-family:var(--font-head);font-size:24px;font-weight:800">QR Attendance Tracker</h2>  
+        <p style="color:var(--muted);font-size:14px;margin-top:4px">Mark attendance by QR token or manage manually</p>  
+      </div>  <div class="chart-card" style="margin-bottom:20px">  
+    <div class="card-header" style="margin-bottom:16px">  
+      <div class="card-title">Scan / Enter QR Token</div>  
+    </div>  
+    <div style="display:flex;gap:12px">  
+      <input type="text" id="qrInput" placeholder="Paste QR token here..." style="flex:1">  
+      <button class="btn-primary" onclick="markAttendance()">Mark Present ✓</button>  
+    </div>  
+    <p style="font-size:12px;color:var(--muted);margin-top:10px">Participants show their QR code from the participant dashboard. Enter the token here to mark attendance.</p>  
+  </div>  
+
+  <div class="select-event-bar">  
+    <select id="attendanceEventSelect" onchange="loadAttendanceList()">  
+      <option value="">Select event to view attendance...</option>  
+    </select>  
+  </div>  
+
+  <div id="attendanceList">  
+    <div class="empty-state">  
+      <div class="empty-icon">📱</div>  
+      <h3>Select an event</h3>  
+      <p>Choose an event to view and manage attendance.</p>  
+    </div>  
+  </div>  
+</div>
+
+  </div>    <!-- FEEDBACK PAGE -->    <div class="page" id="page-feedback">  
+    <div class="select-event-bar">  
+      <select id="feedbackEventSelect" onchange="loadFeedback()">  
+        <option value="">Select an event...</option>  
+      </select>  
+    </div>  <div id="feedbackStats" style="display:none;margin-bottom:24px">  
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;display:flex;gap:32px;align-items:center;flex-wrap:wrap">  
+    <div>  
+      <div style="font-family:var(--font-head);font-size:48px;font-weight:800" id="fbAvg">—</div>  
+      <div style="color:var(--muted);font-size:14px">Average rating</div>  
+      <div id="fbStars" class="stars" style="margin-top:8px"></div>  
+    </div>  
+    <div>  
+      <div style="font-family:var(--font-head);font-size:36px;font-weight:800" id="fbCount">—</div>  
+      <div style="color:var(--muted);font-size:14px">Total responses</div>  
+    </div>  
+    <canvas id="ratingChart" height="60" style="max-width:300px;flex:1"></canvas>  
+  </div>  
+</div>  
+
+<div id="feedbackList">  
+  <div class="empty-state">  
+    <div class="empty-icon">⭐</div>  
+    <h3>Select an event</h3>  
+    <p>Choose an event to view participant feedback.</p>  
+  </div>  
+</div>
+
+  </div>    <!-- CERTIFICATES PAGE -->    <div class="page" id="page-certificates">  
+    <div class="select-event-bar">  
+      <select id="certsEventSelect" onchange="loadCertificates()">  
+        <option value="">Select an event...</option>  
+      </select>  
+      <button class="btn-primary" onclick="issueCertificates()" id="btnIssueCerts">Issue Certificates</button>  
+    </div>  
+    <div id="certsList">  
+      <div class="empty-state">  
+        <div class="empty-icon">🏆</div>  
+        <h3>Select an event</h3>  
+        <p>Issue and manage participation certificates per event.</p>  
+      </div>  
+    </div>  
+  </div>    <!-- ANALYTICS PAGE -->    <div class="page" id="page-analytics">  
+    <div style="margin-bottom:24px">  
+      <h2 style="font-family:var(--font-head);font-size:24px;font-weight:800">Platform Analytics</h2>  
+      <p style="color:var(--muted);font-size:14px;margin-top:4px">Insights across all your events</p>  
+    </div>  
+    <div class="analytics-grid">  
+      <div class="chart-card">  
+        <div class="card-header"><div class="card-title">Events by Status</div></div>  
+        <canvas id="statusChart"></canvas>  
+      </div>  
+      <div class="chart-card">  
+        <div class="card-header"><div class="card-title">Ratings Distribution</div></div>  
+        <canvas id="ratingsDistChart"></canvas>  
+      </div>  
+      <div class="chart-card">  
+        <div class="card-header"><div class="card-title">Attendance Rate per Event</div></div>  
+        <canvas id="attendanceChart"></canvas>  
+      </div>  
+      <div class="chart-card">  
+        <div class="card-header"><div class="card-title">Registrations per Event</div></div>  
+        <canvas id="regChart"></canvas>  
+      </div>  
+    </div>  
+  </div>  
+
+</div><!-- /main -->  
+
+<script src="config.js"></script>  
+<script>  
+// ── Global state ──────────────────────────────────────────────  
+let currentUser = null;  
+let allEvents = [];  
+let selectedBannerColor = '#00d4aa';  
+let charts = {};  
+  
+// ── Init ──────────────────────────────────────────────────────  
+document.addEventListener('DOMContentLoaded', async () => {  
+  const session = await requireAuth();  
+  if (!session) return;  
+  
+  currentUser = await getCurrentUser();  
+  if (!currentUser || currentUser.role !== 'admin') {  
+    window.location.href = 'participant.html';  
+    return;  
+  }  
+  
+  document.getElementById('sidebarName').textContent = currentUser.full_name;  
+  document.getElementById('sidebarAvatar').textContent = currentUser.full_name[0].toUpperCase();  
+  
+  await Promise.all([loadDashboard(), loadAllEvents()]);  
+});  
+  
+// ── Navigation ────────────────────────────────────────────────  
+function showPage(name) {  
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));  
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));  
+  document.getElementById(`page-${name}`).classList.add('active');  
+  document.querySelectorAll('.nav-item').forEach(n => {  
+    if (n.textContent.toLowerCase().includes(name === 'dashboard' ? 'dashboard' :  
+        name === 'events' ? 'my events' : name === 'create' ? 'create' :  
+        name === 'participants' ? 'parti' : name === 'attendance' ? 'attend' :  
+        name === 'feedback' ? 'feedback' : name === 'certificates' ? 'cert' : 'analytics')) {  
+      n.classList.add('active');  
+    }  
+  });  
+  const titles = {  
+    dashboard: 'Dashboard', events: 'My Events', create: 'Create Event',  
+    participants: 'Participants', attendance: 'Attendance', feedback: 'Feedback',  
+    certificates: 'Certificates', analytics: 'Analytics'  
+  };  
+  document.getElementById('topbarTitle').textContent = titles[name] || name;  
+  if (name === 'events') loadEventsPage();  
+  if (name === 'analytics') loadAnalytics();  
+}  
+  
+// ── Load all events ────────────────────────────────────────────  
+async function loadAllEvents() {  
+  const { data } = await db.from('events').select('*').eq('created_by', currentUser.id).order('created_at', { ascending: false });  
+  allEvents = data || [];  
+  
+  // Populate selects  
+  const selects = ['participantsEventSelect','attendanceEventSelect','feedbackEventSelect','certsEventSelect'];  
+  selects.forEach(id => {  
+    const el = document.getElementById(id);  
+    el.innerHTML = '<option value="">Select an event...</option>';  
+    allEvents.forEach(e => {  
+      const opt = document.createElement('option');  
+      opt.value = e.id; opt.textContent = e.title;  
+      el.appendChild(opt);  
+    });  
+  });  
+}  
+  
+// ── Dashboard ─────────────────────────────────────────────────  
+async function loadDashboard() {  
+  const [regResult, attendResult, fbResult] = await Promise.all([  
+    db.from('registrations').select('id,attended,event_id,events!inner(created_by)').eq('events.created_by', currentUser.id),  
+    db.from('registrations').select('id').eq('attended', true),  
+    db.from('feedback').select('rating,event_id,events!inner(created_by)').eq('events.created_by', currentUser.id)  
+  ]);  
+  
+  const { data: events } = await db.from('events').select('*').eq('created_by', currentUser.id);  
+  allEvents = events || [];  
+  
+  const regs = regResult.data || [];  
+  const fbs = fbResult.data || [];  
+  const attended = regs.filter(r => r.attended).length;  
+  
+  document.getElementById('statEvents').textContent = allEvents.length;  
+  document.getElementById('statRegistrations').textContent = regs.length;  
+  document.getElementById('statAttended').textContent = attended;  
+  document.getElementById('statAttRate').textContent = regs.length ? `${Math.round(attended/regs.length*100)}% attendance rate` : 'No data yet';  
+  
+  const avgRating = fbs.length ? (fbs.reduce((a,b) => a + b.rating, 0) / fbs.length).toFixed(1) : '—';  
+  document.getElementById('statRating').textContent = avgRating !== '—' ? `${avgRating}★` : '—';  
+  
+  renderDashboardCharts(allEvents);  
+  renderRecentEventsTable(allEvents.slice(0, 5));  
+}  
+  
+function renderDashboardCharts(events) {  
+  const statuses = ['draft','open','closed','completed'];  
+  const statusCounts = statuses.map(s => events.filter(e => e.status === s).length);  
+  const categories = [...new Set(events.map(e => e.category))];  
+  const catCounts = categories.map(c => events.filter(e => e.category === c).length);  
+  
+  if (charts.reg) charts.reg.destroy();  
+  if (charts.cat) charts.cat.destroy();  
+  
+  const chartDefaults = {  
+    plugins: { legend: { labels: { color: 'rgba(241,241,245,0.6)', font: { family: 'DM Sans' } } } },  
+    scales: {  
+      x: { ticks: { color: 'rgba(241,241,245,0.4)' }, grid: { color: 'rgba(255,255,255,0.04)' } },  
+      y: { ticks: { color: 'rgba(241,241,245,0.4)' }, grid: { color: 'rgba(255,255,255,0.04)' } }  
+    }  
+  };  
+  
+  charts.reg = new Chart(document.getElementById('registrationsChart'), {  
+    type: 'bar',  
+    data: {  
+      labels: statuses.map(s => s.charAt(0).toUpperCase() + s.slice(1)),  
+      datasets: [{ label: 'Events', data: statusCounts, backgroundColor: ['rgba(99,102,241,0.6)','rgba(0,212,170,0.6)','rgba(239,68,68,0.6)','rgba(245,158,11,0.6)'], borderRadius: 8, borderSkipped: false }]  
+    },  
+    options: { ...chartDefaults, responsive: true, plugins: { ...chartDefaults.plugins, legend: { display: false } } }  
+  });  
+  
+  charts.cat = new Chart(document.getElementById('categoryChart'), {  
+    type: 'doughnut',  
+    data: {  
+      labels: categories.length ? categories : ['No events'],  
+      datasets: [{ data: catCounts.length ? catCounts : [1], backgroundColor: ['#00d4aa','#6366f1','#f59e0b','#ef4444','#ec4899','#8b5cf6','#22c55e','#0ea5e9'], borderWidth: 0 }]  
+    },  
+    options: { responsive: true, plugins: { legend: { position: 'right', labels: { color: 'rgba(241,241,245,0.6)', font: { family: 'DM Sans' }, padding: 12 } } } }  
+  });  
+}  
+  
+function renderRecentEventsTable(events) {  
+  const container = document.getElementById('recentEventsTable');  
+  if (!events.length) {  
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon">🗓</div><h3>No events yet</h3><p>Create your first event to get started.</p></div>`;  
+    return;  
+  }  
+  
+  container.innerHTML = `  
+    <table>  
+      <thead><tr>  
+        <th>Event</th><th>Date</th><th>Status</th><th>Location</th><th>Actions</th>  
+      </tr></thead>  
+      <tbody>${events.map(e => `  
+        <tr>  
+          <td>  
+            <div style="display:flex;align-items:center;gap:12px">  
+              <div style="width:10px;height:36px;border-radius:4px;background:${e.banner_color || '#00d4aa'}"></div>  
+              <div>  
+                <div style="font-weight:600">${e.title}</div>  
+                <div style="font-size:12px;color:var(--muted)">${e.category}</div>  
+              </div>  
+            </div>  
+          </td>  
+          <td style="color:var(--muted)">${formatDate(e.date)}</td>  
+          <td>${statusBadge(e.status)}</td>  
+          <td style="color:var(--muted)">${e.location}</td>  
+          <td>  
+            <div style="display:flex;gap:6px">  
+              ${e.status === 'open' ? `<button class="btn-icon" onclick="changeStatus('${e.id}','closed')" title="Close event">🔒</button>` : ''}  
+              ${e.status === 'draft' ? `<button class="btn-icon" onclick="changeStatus('${e.id}','open')" title="Open event">🔓</button>` : ''}  
+              ${e.status === 'closed' ? `<button class="btn-icon" onclick="changeStatus('${e.id}','completed')" title="Mark completed">✓</button>` : ''}  
+              <button class="btn-icon" onclick="deleteEvent('${e.id}')" title="Delete">🗑</button>  
+            </div>  
+          </td>  
+        </tr>`).join('')}  
+      </tbody>  
+    </table>`;  
+}  
+  
+function statusBadge(status) {  
+  const colors = { open:'#00d4aa', closed:'#ef4444', draft:'#6366f1', completed:'#f59e0b' };  
+  const c = colors[status] || '#888';  
+  return `<span class="status-badge" style="background:${c}18;color:${c}"><span class="badge-dot" style="background:${c}"></span>${status}</span>`;  
+}  
+  
+// ── Events Table ───────────────────────────────────────────────  
+let eventsFilter = '';  
+function filterEvents() {  
+  eventsFilter = document.getElementById('eventsSearch').value.toLowerCase();  
+  const filtered = allEvents.filter(e => e.title.toLowerCase().includes(eventsFilter) || e.category.toLowerCase().includes(eventsFilter));  
+  renderEventsTable(filtered);  
+}  
+  
+async function loadEventsPage() {  
+  renderEventsTable(allEvents);  
+}  
+  
+function renderEventsTable(events) {  
+  const container = document.getElementById('eventsTableBody');  
+  if (!events.length) {  
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon">🗓</div><h3>No events found</h3><p>Create your first event to get started.</p></div>`;  
+    return;  
+  }  
+  container.innerHTML = `  
+    <table>  
+      <thead><tr><th>Event</th><th>Date & Time</th><th>Status</th><th>Capacity</th><th>Location</th><th>Actions</th></tr></thead>  
+      <tbody>${events.map(e => `  
+        <tr>  
+          <td>  
+            <div style="display:flex;align-items:center;gap:12px">  
+              <div style="width:8px;height:40px;border-radius:4px;background:${e.banner_color}"></div>  
+              <div>  
+                <div style="font-weight:600">${e.title}</div>  
+                <div style="font-size:12px;color:var(--muted)">${getCategoryEmoji(e.category)} ${e.category}</div>  
+              </div>  
+            </div>  
+          </td>  
+          <td><div style="font-size:13px">${formatDate(e.date)}</div><div style="font-size:12px;color:var(--muted)">${formatTime(e.time)}</div></td>  
+          <td>${statusBadge(e.status)}</td>  
+          <td style="color:var(--muted)">${e.capacity}</td>  
+          <td style="color:var(--muted);font-size:13px">${e.location}</td>  
+          <td>  
+            <div style="display:flex;gap:6px;flex-wrap:wrap">  
+              <button class="btn-icon" onclick="window.location.href='event-room.html?id=${e.id}'" title="Enter Event Room" style="background:rgba(0,212,170,0.12);border-color:rgba(0,212,170,0.3);color:var(--primary)">🎪</button>  
+              ${e.status === 'draft' ? `<button class="btn-icon" onclick="changeStatus('${e.id}','open')" title="Publish">🔓</button>` : ''}  
+              ${e.status === 'open' ? `<button class="btn-icon" onclick="changeStatus('${e.id}','closed')" title="Close">🔒</button>` : ''}  
+              ${e.status === 'closed' ? `<button class="btn-icon" onclick="changeStatus('${e.id}','completed')" title="Complete">✓</button>` : ''}  
+              <button class="btn-icon" onclick="deleteEvent('${e.id}')" title="Delete" style="color:var(--red)">🗑</button>  
+            </div>  
+          </td>  
+        </tr>`).join('')}  
+      </tbody>  
+    </table>`;  
+}  
+  
+// ── Create Event ───────────────────────────────────────────────  
+function selectColor(el) {  
+  document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));  
+  el.classList.add('selected');  
+  selectedBannerColor = el.dataset.color;  
+}  
+  
+async function createEvent() {  
+  const title = document.getElementById('evTitle').value.trim();  
+  const desc = document.getElementById('evDesc').value.trim();  
+  const category = document.getElementById('evCat').value;  
+  const location = document.getElementById('evLocation').value.trim();  
+  const date = document.getElementById('evDate').value;  
+  const time = document.getElementById('evTime').value;  
+  const endTime = document.getElementById('evEndTime').value;  
+  const capacity = parseInt(document.getElementById('evCapacity').value) || 100;  
+  const requirements = document.getElementById('evRequirements').value.trim();  
+  const status = document.getElementById('evStatus').value;  
+  
+  if (!title || !location || !date || !time) return toast('Please fill in all required fields.', 'error');  
+  
+  const btn = document.getElementById('btnCreate');  
+  showLoading(btn, 'Creating...');  
+  
+  try {  
+    const { data, error } = await db.from('events').insert({  
+      title, description: desc, category, location, date, time,  
+      end_time: endTime || null, capacity, requirements, status,  
+      banner_color: selectedBannerColor, created_by: currentUser.id  
+    }).select().single();  
+  
+    if (error) throw error;  
+  
+    toast(`Event "${title}" created!`, 'success');  
+    await loadAllEvents();  
+    showPage('events');  
+    loadEventsPage();  
+  
+    // Clear form  
+    ['evTitle','evDesc','evLocation','evDate','evTime','evEndTime','evRequirements'].forEach(id => document.getElementById(id).value = '');  
+    document.getElementById('evCapacity').value = '';  
+  } catch(err) {  
+    toast(err.message, 'error');  
+  }  
+  hideLoading(btn);  
+}  
+  
+// ── Change Status ──────────────────────────────────────────────  
+async function changeStatus(eventId, newStatus) {  
+  const { error } = await db.from('events').update({ status: newStatus }).eq('id', eventId);  
+  if (error) return toast(error.message, 'error');  
+  toast(`Status changed to ${newStatus}`, 'success');  
+  await loadAllEvents();  
+  loadDashboard();  
+  renderEventsTable(allEvents);  
+}  
+  
+// ── Delete Event ───────────────────────────────────────────────  
+async function deleteEvent(eventId) {  
+  if (!confirm('Are you sure you want to delete this event? This cannot be undone.')) return;  
+  const { error } = await db.from('events').delete().eq('id', eventId);  
+  if (error) return toast(error.message, 'error');  
+  toast('Event deleted.', 'success');  
+  await loadAllEvents();  
+  loadDashboard();  
+  renderEventsTable(allEvents);  
+}  
+  
+// ── Participants ───────────────────────────────────────────────  
+async function loadParticipants() {  
+  const eventId = document.getElementById('participantsEventSelect').value;  
+  const container = document.getElementById('participantsList');  
+  if (!eventId) return;  
+  
+  container.innerHTML = '<div class="page-spinner"><div class="sp"></div></div>';  
+  
+  const { data, error } = await db.from('registrations')  
+    .select('*, profiles(full_name, organization)')  
+    .eq('event_id', eventId)  
+    .order('registered_at', { ascending: false });  
+  
+  if (error) { container.innerHTML = `<p style="color:var(--red);padding:20px">${error.message}</p>`; return; }  
+  
+  document.getElementById('participantsCount').textContent = `${data.length} participant${data.length !== 1 ? 's' : ''}`;  
+  
+  if (!data.length) {  
+    container.innerHTML = '<div class="empty-state"><div class="empty-icon">👥</div><h3>No participants yet</h3><p>No one has registered for this event yet.</p></div>';  
+    return;  
+  }  
+  
+  container.innerHTML = data.map(r => `  
+    <div class="participant-card">  
+      <div class="p-avatar">${(r.profiles?.full_name || 'U')[0].toUpperCase()}</div>  
+      <div class="p-info">  
+        <div class="p-name">${r.profiles?.full_name || 'Unknown'}</div>  
+        <div class="p-meta">${r.profiles?.organization || 'No org'} • Joined ${timeAgo(r.registered_at)}</div>  
+      </div>  
+      <div style="font-size:12px;color:var(--muted);margin-right:16px">${r.attended ? `✓ Attended ${formatDate(r.attended_at)}` : 'Not attended'}</div>  
+      <div class="attendance-toggle ${r.attended ? 'attended' : ''}" onclick="toggleAttendance('${r.id}', this, ${r.attended})" title="Toggle attendance"></div>  
+    </div>  
+  `).join('');  
+}  
+  
+async function toggleAttendance(regId, el, currentlyAttended) {  
+  const newVal = !currentlyAttended;  
+  el.classList.toggle('attended', newVal);  
+  const { error } = await db.from('registrations').update({ attended: newVal, attended_at: newVal ? new Date().toISOString() : null }).eq('id', regId);  
+  if (error) { toast(error.message, 'error'); el.classList.toggle('attended', currentlyAttended); }  
+  else toast(newVal ? 'Marked as attended' : 'Attendance removed', 'success');  
+}  
+  
+// ── Attendance QR ─────────────────────────────────────────────  
+async function markAttendance() {  
+  const token = document.getElementById('qrInput').value.trim();  
+  if (!token) return toast('Enter a QR token first', 'error');  
+  
+  const { data, error } = await db.from('registrations').update({ attended: true, attended_at: new Date().toISOString() }).eq('qr_token', token).select('*, profiles(full_name)').single();  
+  if (error || !data) return toast('Invalid token or already marked', 'error');  
+  
+  toast(`✓ ${data.profiles?.full_name || 'Participant'} marked as attended!`, 'success');  
+  document.getElementById('qrInput').value = '';  
+  loadAttendanceList();  
+}  
+  
+async function loadAttendanceList() {  
+  const eventId = document.getElementById('attendanceEventSelect').value;  
+  if (!eventId) return;  
+  const container = document.getElementById('attendanceList');  
+  container.innerHTML = '<div class="page-spinner"><div class="sp"></div></div>';  
+  
+  const { data } = await db.from('registrations').select('*, profiles(full_name)').eq('event_id', eventId).order('registered_at');  
+  
+  if (!data?.length) {  
+    container.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><h3>No registrations</h3><p>No one has registered yet.</p></div>';  
+    return;  
+  }  
+  
+  const attended = data.filter(r => r.attended).length;  
+  container.innerHTML = `  
+    <div style="margin-bottom:16px;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;display:flex;gap:24px">  
+      <span style="font-size:14px;color:var(--muted)">Total: <strong style="color:var(--text)">${data.length}</strong></span>  
+      <span style="font-size:14px;color:var(--primary)">Attended: <strong>${attended}</strong></span>  
+      <span style="font-size:14px;color:var(--muted)">Pending: <strong style="color:var(--text)">${data.length - attended}</strong></span>  
+    </div>  
+    ${data.map(r => `  
+    <div class="participant-card">  
+      <div class="p-avatar" style="background:${r.attended ? 'linear-gradient(135deg,#00d4aa,#00b894)' : 'linear-gradient(135deg,#6366f1,#818cf8)'}">  
+        ${(r.profiles?.full_name || 'U')[0].toUpperCase()}  
+      </div>  
+      <div class="p-info">  
+        <div class="p-name">${r.profiles?.full_name || 'Unknown'}</div>  
+        <div class="p-meta" style="font-family:monospace;font-size:11px">${r.qr_token?.substring(0,16)}...</div>  
+      </div>  
+      <span style="font-size:13px;color:${r.attended ? 'var(--primary)' : 'var(--muted)'}">${r.attended ? '✓ Present' : '⏳ Absent'}</span>  
+    </div>`).join('')}`;  
+}  
+  
+// ── Feedback ───────────────────────────────────────────────────  
+async function loadFeedback() {  
+  const eventId = document.getElementById('feedbackEventSelect').value;  
+  if (!eventId) return;  
+  const container = document.getElementById('feedbackList');  
+  container.innerHTML = '<div class="page-spinner"><div class="sp"></div></div>';  
+  
+  const { data } = await db.from('feedback').select('*, profiles(full_name)').eq('event_id', eventId).order('created_at', { ascending: false });  
+  
+  if (!data?.length) {  
+    document.getElementById('feedbackStats').style.display = 'none';  
+    container.innerHTML = '<div class="empty-state"><div class="empty-icon">⭐</div><h3>No feedback yet</h3><p>Participants can submit feedback after the event.</p></div>';  
+    return;  
+  }  
+  
+  const avg = data.reduce((a,b) => a + b.rating, 0) / data.length;  
+  document.getElementById('feedbackStats').style.display = 'block';  
+  document.getElementById('fbAvg').textContent = avg.toFixed(1);  
+  document.getElementById('fbCount').textContent = data.length;  
+  document.getElementById('fbStars').innerHTML = [1,2,3,4,5].map(i => `<span class="star ${i <= Math.round(avg) ? 'filled' : ''}">★</span>`).join('');  
+  
+  // Rating distribution chart  
+  const dist = [1,2,3,4,5].map(i => data.filter(f => f.rating === i).length);  
+  if (charts.rating) charts.rating.destroy();  
+  charts.rating = new Chart(document.getElementById('ratingChart'), {  
+    type: 'bar',  
+    data: {  
+      labels: ['1★','2★','3★','4★','5★'],  
+      datasets: [{ data: dist, backgroundColor: ['#ef4444','#f97316','#f59e0b','#84cc16','#22c55e'], borderRadius: 6, borderSkipped: false }]  
+    },  
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: 'rgba(241,241,245,0.5)' }, grid: { display: false } }, y: { ticks: { color: 'rgba(241,241,245,0.5)', stepSize: 1 }, grid: { color: 'rgba(255,255,255,0.04)' } } } }  
+  });  
+  
+  container.innerHTML = data.map(f => `  
+    <div class="feedback-card">  
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">  
+        <div style="font-weight:600;font-size:14px">${f.profiles?.full_name || 'Anonymous'}</div>  
+        <div class="stars">${[1,2,3,4,5].map(i => `<span class="star ${i <= f.rating ? 'filled' : ''}">★</span>`).join('')}</div>  
+      </div>  
+      <p style="font-size:14px;color:var(--muted);line-height:1.6">${f.message || '<em>No written feedback</em>'}</p>  
+      <div style="font-size:12px;color:var(--muted);margin-top:10px">${timeAgo(f.created_at)}</div>  
+    </div>`).join('');  
+}  
+  
+// ── Certificates ───────────────────────────────────────────────  
+async function loadCertificates() {  
+  const eventId = document.getElementById('certsEventSelect').value;  
+  if (!eventId) return;  
+  const container = document.getElementById('certsList');  
+  container.innerHTML = '<div class="page-spinner"><div class="sp"></div></div>';  
+  
+  const event = allEvents.find(e => e.id === eventId);  
+  
+  const [regResult, certResult] = await Promise.all([  
+    db.from('registrations').select('*, profiles(full_name)').eq('event_id', eventId).eq('attended', true),  
+    db.from('certificates').select('*').eq('event_id', eventId)  
+  ]);  
+  
+  const attendees = regResult.data || [];  
+  const certs = certResult.data || [];  
+  
+  if (!attendees.length) {  
+    container.innerHTML = '<div class="empty-state"><div class="empty-icon">🏆</div><h3>No attendees</h3><p>Only attended participants can receive certificates.</p></div>';  
+    return;  
+  }  
+  
+  container.innerHTML = `  
+    <div class="table-wrap">  
+      <div class="table-toolbar" style="border-bottom:1px solid var(--border)">  
+        <div><strong>${attendees.length} attendee${attendees.length !== 1 ? 's' : ''}</strong><span style="color:var(--muted);font-size:13px;margin-left:12px">${certs.length} certificates issued</span></div>  
+      </div>  
+      <table>  
+        <thead><tr><th>Participant</th><th>Cert ID</th><th>Issued</th><th>Actions</th></tr></thead>  
+        <tbody>  
+          ${attendees.map(r => {  
+            const cert = certs.find(c => c.user_id === r.user_id);  
+            return `<tr>  
+              <td><strong>${r.profiles?.full_name || 'Unknown'}</strong></td>  
+              <td style="font-family:monospace;font-size:12px;color:var(--primary)">${cert ? cert.cert_id : '—'}</td>  
+              <td style="color:var(--muted);font-size:13px">${cert ? timeAgo(cert.issued_at) : 'Not issued'}</td>  
+              <td>  
+                ${cert ? `<button class="btn-icon" onclick="downloadCertForParticipant('${r.profiles?.full_name}','${event?.title}','${event?.date}','${cert.cert_id}','${currentUser.full_name}')" title="Download">⬇</button>` : ''}  
+              </td>  
+            </tr>`;  
+          }).join('')}  
+        </tbody>  
+      </table>  
+    </div>`;  
+}  
+  
+async function issueCertificates() {  
+  const eventId = document.getElementById('certsEventSelect').value;  
+  if (!eventId) return toast('Select an event first', 'error');  
+  
+  const btn = document.getElementById('btnIssueCerts');  
+  showLoading(btn, 'Issuing...');  
+  
+  const { data: attendees } = await db.from('registrations').select('user_id').eq('event_id', eventId).eq('attended', true);  
+  
+  if (!attendees?.length) { hideLoading(btn); return toast('No attended participants to issue certificates for', 'warning'); }  
+  
+  const certs = attendees.map(r => ({ event_id: eventId, user_id: r.user_id }));  
+  const { error } = await db.from('certificates').upsert(certs, { onConflict: 'event_id,user_id' });  
+  
+  hideLoading(btn);  
+  if (error) return toast(error.message, 'error');  
+  toast(`${attendees.length} certificate(s) issued!`, 'success');  
+  loadCertificates();  
+}  
+  
+function downloadCertForParticipant(participantName, eventName, eventDate, certId, issuedBy) {  
+  downloadCertificate({ participantName, eventName, eventDate: formatDate(eventDate), certId, issuedBy });  
+}  
+  
+// ── Analytics ──────────────────────────────────────────────────  
+async function loadAnalytics() {  
+  if (!allEvents.length) { toast('No events data to analyze', 'info'); return; }  
+  
+  const eventIds = allEvents.map(e => e.id);  
+  const [regResult, fbResult] = await Promise.all([  
+    db.from('registrations').select('event_id,attended').in('event_id', eventIds),  
+    db.from('feedback').select('rating,event_id').in('event_id', eventIds)  
+  ]);  
+  
+  const regs = regResult.data || [];  
+  const fbs = fbResult.data || [];  
+  
+  const eventLabels = allEvents.map(e => e.title.substring(0, 20));  
+  
+  // Status chart  
+  const statuses = ['draft','open','closed','completed'];  
+  if (charts.status) charts.status.destroy();  
+  charts.status = new Chart(document.getElementById('statusChart'), {  
+    type: 'pie',  
+    data: {  
+      labels: statuses,  
+      datasets: [{ data: statuses.map(s => allEvents.filter(e => e.status === s).length), backgroundColor: ['#6366f1','#00d4aa','#ef4444','#f59e0b'], borderWidth: 0 }]  
+    },  
+    options: { responsive: true, plugins: { legend: { position: 'right', labels: { color: 'rgba(241,241,245,0.6)', font: { family: 'DM Sans' } } } } }  
+  });  
+  
+  // Ratings distribution  
+  const dist = [1,2,3,4,5].map(i => fbs.filter(f => f.rating === i).length);  
+  if (charts.ratingsDist) charts.ratingsDist.destroy();  
+  charts.ratingsDist = new Chart(document.getElementById('ratingsDistChart'), {  
+    type: 'bar',  
+    data: {  
+      labels: ['1★','2★','3★','4★','5★'],  
+      datasets: [{ label: 'Responses', data: dist, backgroundColor: ['#ef4444','#f97316','#f59e0b','#84cc16','#22c55e'], borderRadius: 8, borderSkipped: false }]  
+    },  
+    options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: 'rgba(241,241,245,0.5)' }, grid: { display: false } }, y: { ticks: { color: 'rgba(241,241,245,0.5)' }, grid: { color: 'rgba(255,255,255,0.04)' } } } }  
+  });  
+  
+  // Attendance chart  
+  if (charts.att) charts.att.destroy();  
+  charts.att = new Chart(document.getElementById('attendanceChart'), {  
+    type: 'bar',  
+    data: {  
+      labels: eventLabels,  
+      datasets: [{  
+        label: 'Attendance Rate (%)',  
+        data: allEvents.map(e => {  
+          const er = regs.filter(r => r.event_id === e.id);  
+          return er.length ? Math.round(er.filter(r => r.attended).length / er.length * 100) : 0;  
+        }),  
+        backgroundColor: 'rgba(0,212,170,0.6)', borderRadius: 8, borderSkipped: false  
+      }]  
+    },  
+    options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: 'rgba(241,241,245,0.5)', maxRotation: 30 }, grid: { display: false } }, y: { ticks: { color: 'rgba(241,241,245,0.5)' }, grid: { color: 'rgba(255,255,255,0.04)' }, max: 100 } } }  
+  });  
+  
+  // Registrations per event  
+  if (charts.regChart) charts.regChart.destroy();  
+  charts.regChart = new Chart(document.getElementById('regChart'), {  
+    type: 'bar',  
+    data: {  
+      labels: eventLabels,  
+      datasets: [{  
+        label: 'Registrations',  
+        data: allEvents.map(e => regs.filter(r => r.event_id === e.id).length),  
+        backgroundColor: 'rgba(99,102,241,0.6)', borderRadius: 8, borderSkipped: false  
+      }]  
+    },  
+    options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: 'rgba(241,241,245,0.5)', maxRotation: 30 }, grid: { display: false } }, y: { ticks: { color: 'rgba(241,241,245,0.5)' }, grid: { color: 'rgba(255,255,255,0.04)' } } } }  
+  });  
+}  
+</script>  
+</body>  
+</html><!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -1563,4 +3075,5 @@ function showPage(name) {
 <script src="config.js"></script>
 </body>
 </html>
+
 
