@@ -6,7 +6,7 @@
   <title>EventTrax — Participant Dashboard</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
-  
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root {
       --bg: #080810;
@@ -151,10 +151,7 @@
     }
     .event-card:hover { transform: translateY(-4px); box-shadow: 0 20px 60px rgba(0,0,0,0.4); border-color: rgba(255,255,255,0.1); }
 
-    .event-banner {
-      height: 8px;
-    }
-
+    .event-banner { height: 8px; }
     .event-body { padding: 24px; }
 
     .event-meta {
@@ -321,11 +318,9 @@
     .reg-event-card:hover { border-color: rgba(255,255,255,0.12); }
 
     .reg-event-color { width: 6px; border-radius: 4px; align-self: stretch; flex-shrink: 0; }
-
     .reg-event-info { flex: 1; }
     .reg-event-title { font-family: var(--font-head); font-size: 17px; font-weight: 700; margin-bottom: 6px; }
     .reg-event-meta { font-size: 13px; color: var(--muted); display: flex; gap: 16px; flex-wrap: wrap; }
-
     .reg-event-actions { display: flex; gap: 10px; align-items: center; flex-shrink: 0; }
 
     /* ── QR MODAL ── */
@@ -631,16 +626,10 @@
     <button class="btn-primary" onclick="submitFeedback()" id="btnFeedback" style="width:100%;justify-content:center">Submit Feedback</button>
   </div>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<!-- ✅ FIX: Only ONE Supabase script (already in <head>), removed duplicate here -->
 <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
-
 <script src="./config.js"></script>
-
-<script>
-console.log("CONFIG LOADED");
-console.log("SUPABASE_URL:", window.SUPABASE_URL);
-console.log("DB:", window.db);
-</script>
 
 <script>
 let currentUser = null;
@@ -649,18 +638,51 @@ let myRegistrations = [];
 let activeFilter = 'all';
 let selectedRating = 0;
 
-// ── Init ──────────────────────────────────────────────────────
-window.addEventListener('load', async () => {
+// ── FIX 1: DOMContentLoaded instead of window load ───────────
+document.addEventListener('DOMContentLoaded', async () => {
   const session = await requireAuth();
   if (!session) return;
 
   currentUser = await getCurrentUser();
+
+  // ── FIX 2: Don't kick out if profile missing — create it instead ──
   if (!currentUser) {
-    await db.auth.signOut();
-    window.location.href = 'auth.html';
+    try {
+      const { data: { user } } = await db.auth.getUser();
+      if (!user) { window.location.href = 'auth.html'; return; }
+
+      // Auto-create missing profile row so user isn't locked out
+      const fallbackName = user.user_metadata?.full_name || user.email.split('@')[0];
+      const fallbackRole = user.user_metadata?.role || 'participant';
+
+      await db.from('profiles').upsert({
+        id: user.id,
+        full_name: fallbackName,
+        role: fallbackRole,
+        organization: user.user_metadata?.organization || ''
+      });
+
+      // Re-fetch after upsert
+      currentUser = await getCurrentUser();
+
+      // If still null something is seriously wrong — redirect
+      if (!currentUser) {
+        await db.auth.signOut();
+        window.location.href = 'auth.html';
+        return;
+      }
+    } catch (e) {
+      await db.auth.signOut();
+      window.location.href = 'auth.html';
+      return;
+    }
+  }
+
+  // Redirect admins to their dashboard
+  if (currentUser.role === 'admin') {
+    window.location.href = 'admin.html';
     return;
   }
-  if (currentUser.role === 'admin') { window.location.href = 'admin.html'; return; }
 
   document.getElementById('sidebarName').textContent = currentUser.full_name;
   document.getElementById('sidebarAvatar').textContent = currentUser.full_name[0].toUpperCase();
@@ -707,7 +729,11 @@ function filterDiscoverEvents() {
   const q = document.getElementById('searchInput').value.toLowerCase();
   let filtered = allDiscoverEvents;
   if (activeFilter !== 'all') filtered = filtered.filter(e => e.category === activeFilter);
-  if (q) filtered = filtered.filter(e => e.title.toLowerCase().includes(q) || e.description?.toLowerCase().includes(q) || e.location.toLowerCase().includes(q));
+  if (q) filtered = filtered.filter(e =>
+    e.title.toLowerCase().includes(q) ||
+    e.description?.toLowerCase().includes(q) ||
+    e.location.toLowerCase().includes(q)
+  );
   renderDiscoverGrid(filtered);
 }
 
@@ -737,9 +763,12 @@ function renderDiscoverGrid(events) {
             <div class="event-detail">👥 ${e.capacity} spots</div>
           </div>
           <div class="event-footer">
-            ${isReg ? `<button class="btn-primary registered" disabled>✓ Registered</button>` :
-              isOpen ? `<button class="btn-primary" onclick="registerEvent('${e.id}', this)">Register →</button>` :
-              `<button class="btn-secondary" disabled>Registration closed</button>`}
+            ${isReg
+              ? `<button class="btn-primary registered" disabled>✓ Registered</button>`
+              : isOpen
+                ? `<button class="btn-primary" onclick="registerEvent('${e.id}', this)">Register →</button>`
+                : `<button class="btn-secondary" disabled>Registration closed</button>`
+            }
             ${isReg ? `<button class="btn-secondary" onclick="showQR('${e.id}')">📱 QR</button>` : '<span></span>'}
           </div>
         </div>
@@ -777,7 +806,12 @@ async function showQR(eventId) {
 
   document.getElementById('qrToken').textContent = data.qr_token;
   document.getElementById('qrCode').innerHTML = '';
-  new QRCode(document.getElementById('qrCode'), { text: data.qr_token, width: 180, height: 180, colorDark: '#000', colorLight: '#fff', correctLevel: QRCode.CorrectLevel.H });
+  new QRCode(document.getElementById('qrCode'), {
+    text: data.qr_token,
+    width: 180, height: 180,
+    colorDark: '#000', colorLight: '#fff',
+    correctLevel: QRCode.CorrectLevel.H
+  });
 
   document.getElementById('qrModal').classList.add('open');
 }
@@ -825,7 +859,7 @@ async function loadMyEventsPage() {
         <div class="reg-event-actions">
           <button class="btn-primary" onclick="window.location.href='event-room.html?id=${e.id}'" style="font-size:13px;padding:8px 16px">🎪 Enter Room</button>
           <button class="btn-secondary" onclick="showQR('${e.id}')" style="font-size:13px">📱 QR</button>
-          ${canFeedback ? `<button class="btn-secondary" onclick="openFeedback('${e.id}','${e.title.replace(/'/g,"\\'")}')" style="font-size:13px">⭐ Rate</button>` : ''}
+          ${canFeedback ? `<button class="btn-secondary" onclick="openFeedback('${e.id}','${e.title.replace(/'/g,"\\'")}') " style="font-size:13px">⭐ Rate</button>` : ''}
         </div>
       </div>`;
   }).join('');
@@ -854,7 +888,12 @@ async function submitFeedback() {
   const btn = document.getElementById('btnFeedback');
   showLoading(btn, 'Submitting...');
 
-  const { error } = await db.from('feedback').upsert({ event_id: eventId, user_id: currentUser.id, rating: selectedRating, message });
+  const { error } = await db.from('feedback').upsert({
+    event_id: eventId,
+    user_id: currentUser.id,
+    rating: selectedRating,
+    message
+  });
 
   hideLoading(btn);
   if (error) return toast(error.message.includes('duplicate') ? 'Already submitted feedback' : error.message, 'error');
@@ -862,12 +901,14 @@ async function submitFeedback() {
   closeModal('feedbackModal');
 }
 
-// ── Certificates ───────────────────────────────────────────────
+// ── Certificates ──────────────────────────────────────────────
 async function loadCertificates() {
   const container = document.getElementById('certsList');
   container.innerHTML = '<div class="page-spinner"><div class="sp"></div></div>';
 
-  const { data, error } = await db.from('certificates').select('*, events(title,date,created_by,profiles!events_created_by_fkey(full_name))').eq('user_id', currentUser.id);
+  const { data, error } = await db.from('certificates')
+    .select('*, events(title,date,created_by,profiles!events_created_by_fkey(full_name))')
+    .eq('user_id', currentUser.id);
 
   if (error || !data?.length) {
     container.innerHTML = '<div class="empty-state"><div class="empty-icon">🏆</div><h3>No certificates yet</h3><p>Attend events to earn participation certificates.</p></div>';
@@ -882,7 +923,14 @@ async function loadCertificates() {
         <div style="font-size:13px;color:var(--muted);margin-top:4px">${formatDate(c.events?.date)} • Issued ${timeAgo(c.issued_at)}</div>
         <div class="cert-id">${c.cert_id}</div>
       </div>
-      <button class="btn-primary" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#000" onclick="downloadCertificate({ participantName:'${currentUser.full_name.replace(/'/g,"\\'")}', eventName:'${(c.events?.title || '').replace(/'/g,"\\'")}', eventDate:'${formatDate(c.events?.date)}', certId:'${c.cert_id}', issuedBy:'${(c.events?.profiles?.full_name || 'EventTrax').replace(/'/g,"\\'")}' })">⬇ Download</button>
+      <button class="btn-primary" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#000"
+        onclick="downloadCertificate({
+          participantName:'${currentUser.full_name.replace(/'/g,"\\'")}',
+          eventName:'${(c.events?.title || '').replace(/'/g,"\\'")}',
+          eventDate:'${formatDate(c.events?.date)}',
+          certId:'${c.cert_id}',
+          issuedBy:'${(c.events?.profiles?.full_name || 'EventTrax').replace(/'/g,"\\'")}' 
+        })">⬇ Download</button>
     </div>`).join('');
 }
 
@@ -898,7 +946,6 @@ async function loadProfile() {
         <span style="font-size:11px;color:#818cf8;background:rgba(99,102,241,0.08);padding:3px 10px;border-radius:100px;margin-top:8px;display:inline-block">Participant</span>
       </div>
     </div>
-
     <div class="form-group">
       <label>Full Name</label>
       <input type="text" id="profileName" value="${currentUser.full_name}">
@@ -911,7 +958,6 @@ async function loadProfile() {
       <label>Bio</label>
       <textarea id="profileBio" placeholder="A brief description...">${currentUser.bio || ''}</textarea>
     </div>
-
     <button class="btn-primary" onclick="saveProfile()" id="btnSaveProfile">Save Changes</button>
     <button class="btn-secondary" onclick="logout()" style="margin-left:12px">Sign Out</button>`;
 }
@@ -944,10 +990,6 @@ document.querySelectorAll('.modal-overlay').forEach(m => {
   m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
 });
 </script>
-  
+
 </body>
 </html>
-
-
-
-
