@@ -631,13 +631,17 @@
     <button class="btn-primary" onclick="submitFeedback()" id="btnFeedback" style="width:100%;justify-content:center">Submit Feedback</button>
   </div>
 </div>
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+
 <script src="./config.js"></script>
+
 <script>
-  console.log('Supabase connected:', db); 
+console.log("CONFIG LOADED");
+console.log("SUPABASE_URL:", window.SUPABASE_URL);
+console.log("DB:", window.db);
 </script>
+
 <script>
 let currentUser = null;
 let allDiscoverEvents = [];
@@ -943,6 +947,7 @@ document.querySelectorAll('.modal-overlay').forEach(m => {
   
 </body>
 </html>
+
 
 
 
