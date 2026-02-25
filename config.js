@@ -1,9 +1,9 @@
 const SUPABASE_URL = 'https://pxtpsugbuunjzurdvzkc.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4dHBzdWdidXVuanp1cmR2emtjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NDY4OTIsImV4cCI6MjA4NjEyMjg5Mn0.VXRKe2AXSiv8vRxfoPDyBl9McRmkYDVUBcRN2Jy6q5g';
-// Init Supabase client
-const { createClient } = supabase;
-const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+console.log("Supabase connected:", db);
 // ─── Auth Helpers ───────────────────────────────────────────
 
 async function getSession() {
@@ -324,3 +324,4 @@ async function checkSupabaseConnection() {
   }
   return true;
 }
+
