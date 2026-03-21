@@ -1,0 +1,1509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Event Room — EventTrax</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #080810;
+      --surface: #0e0e1a;
+      --surface2: #141424;
+      --surface3: #1a1a2e;
+      --border: rgba(255,255,255,0.07);
+      --primary: #00d4aa;
+      --secondary: #6366f1;
+      --accent: #f59e0b;
+      --red: #ef4444;
+      --green: #22c55e;
+      --text: #f1f1f5;
+      --muted: rgba(241,241,245,0.45);
+      --font-head: 'Syne', sans-serif;
+      --font-body: 'DM Sans', sans-serif;
+    }
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      font-family: var(--font-body);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── HEADER ── */
+    .event-header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 20px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(20px);
+    }
+
+    .event-info {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .event-color-bar {
+      width: 6px;
+      height: 48px;
+      border-radius: 4px;
+      flex-shrink: 0;
+    }
+
+    .event-text { min-width: 0; }
+    .event-title {
+      font-family: var(--font-head);
+      font-size: 20px;
+      font-weight: 800;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .event-meta {
+      display: flex;
+      gap: 16px;
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .live-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      background: rgba(239,68,68,0.12);
+      border: 1px solid rgba(239,68,68,0.3);
+      border-radius: 100px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--red);
+    }
+
+    .live-dot {
+      width: 6px;
+      height: 6px;
+      background: var(--red);
+      border-radius: 50%;
+      animation: pulse 2s ease infinite;
+    }
+
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.5)} }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .participants-count {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .btn-exit {
+      padding: 10px 20px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-exit:hover { border-color: var(--red); color: var(--red); }
+
+    /* ── MAIN LAYOUT ── */
+    .event-room {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* ── SIDEBAR (Activity List) ── */
+    .activities-sidebar {
+      width: 280px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+
+    .sidebar-header {
+      padding: 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .sidebar-title {
+      font-family: var(--font-head);
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .activity-item {
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      border-left: 3px solid transparent;
+    }
+
+    .activity-item:hover {
+      background: rgba(255,255,255,0.02);
+    }
+
+    .activity-item.active {
+      background: rgba(0,212,170,0.06);
+      border-left-color: var(--primary);
+    }
+
+    .activity-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+
+    .activity-info { flex: 1; min-width: 0; }
+    .activity-name {
+      font-size: 14px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .activity-desc {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    .activity-status {
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 100px;
+      font-weight: 600;
+    }
+
+    .status-live { background: rgba(239,68,68,0.12); color: var(--red); }
+    .status-ready { background: rgba(0,212,170,0.12); color: var(--primary); }
+    .status-ended { background: rgba(255,255,255,0.05); color: var(--muted); }
+
+    /* ── MAIN STAGE ── */
+    .main-stage {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .stage-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 32px;
+    }
+
+    .stage-welcome {
+      text-align: center;
+      padding: 80px 40px;
+    }
+
+    .welcome-icon {
+      font-size: 64px;
+      margin-bottom: 24px;
+      opacity: 0.8;
+    }
+
+    .welcome-title {
+      font-family: var(--font-head);
+      font-size: 32px;
+      font-weight: 800;
+      margin-bottom: 12px;
+    }
+
+    .welcome-text {
+      color: var(--muted);
+      font-size: 16px;
+      max-width: 500px;
+      margin: 0 auto;
+      line-height: 1.7;
+    }
+
+    /* ── ACTIVITY MODULES ── */
+    .activity-container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .activity-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 32px;
+    }
+
+    .activity-title-block h2 {
+      font-family: var(--font-head);
+      font-size: 28px;
+      font-weight: 800;
+      margin-bottom: 6px;
+    }
+
+    .activity-title-block p {
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .btn-primary {
+      padding: 12px 24px;
+      background: linear-gradient(135deg, var(--primary), #00b894);
+      color: #000;
+      border: none;
+      border-radius: 10px;
+      font-family: var(--font-body);
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(0,212,170,0.3); }
+    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+    .btn-secondary {
+      padding: 12px 24px;
+      background: var(--surface2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-family: var(--font-body);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-secondary:hover { border-color: rgba(255,255,255,0.15); }
+
+    /* ── POLL MODULE ── */
+    .poll-question {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 24px;
+      line-height: 1.4;
+    }
+
+    .poll-options {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .poll-option {
+      position: relative;
+      padding: 18px 24px;
+      background: var(--surface);
+      border: 2px solid var(--border);
+      border-radius: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+      overflow: hidden;
+    }
+
+    .poll-option:hover {
+      border-color: rgba(255,255,255,0.15);
+      background: var(--surface2);
+    }
+
+    .poll-option.selected {
+      border-color: var(--primary);
+      background: rgba(0,212,170,0.06);
+    }
+
+    .poll-option-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      background: linear-gradient(90deg, rgba(0,212,170,0.15), transparent);
+      transition: width 0.5s ease;
+      width: 0;
+    }
+
+    .poll-option-content {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 1;
+    }
+
+    .poll-option-text {
+      font-size: 15px;
+      font-weight: 500;
+    }
+
+    .poll-option-percent {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--primary);
+    }
+
+    .poll-results-chart {
+      margin-top: 32px;
+      padding: 24px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+    }
+
+    /* ── Q&A MODULE ── */
+    .qa-input-section {
+      margin-bottom: 32px;
+    }
+
+    .qa-input-wrapper {
+      display: flex;
+      gap: 12px;
+    }
+
+    .qa-input {
+      flex: 1;
+      padding: 14px 18px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 15px;
+      outline: none;
+      transition: all 0.2s;
+    }
+
+    .qa-input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(0,212,170,0.1);
+    }
+
+    .qa-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .qa-card {
+      padding: 20px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      display: flex;
+      gap: 16px;
+    }
+
+    .qa-vote {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      min-width: 50px;
+    }
+
+    .vote-btn {
+      width: 36px;
+      height: 36px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 16px;
+      transition: all 0.2s;
+    }
+
+    .vote-btn:hover {
+      background: var(--surface3);
+      transform: scale(1.1);
+    }
+
+    .vote-btn.active {
+      background: rgba(0,212,170,0.12);
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    .vote-count {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--primary);
+    }
+
+    .qa-content { flex: 1; }
+
+    .qa-question {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      line-height: 1.5;
+    }
+
+    .qa-meta {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .qa-answer {
+      margin-top: 12px;
+      padding: 12px 16px;
+      background: rgba(0,212,170,0.06);
+      border-left: 3px solid var(--primary);
+      border-radius: 8px;
+      font-size: 14px;
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    .qa-answer-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--primary);
+      margin-bottom: 6px;
+    }
+
+    /* ── SPIN WHEEL ── */
+    .wheel-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 32px;
+    }
+
+    .wheel-canvas-wrap {
+      position: relative;
+    }
+
+    #wheelCanvas {
+      border-radius: 50%;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    }
+
+    .wheel-pointer {
+      position: absolute;
+      top: -20px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 40px;
+      filter: drop-shadow(0 4px 12px rgba(0,0,0,0.4));
+    }
+
+    .wheel-controls {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      width: 100%;
+      max-width: 400px;
+    }
+
+    .wheel-result {
+      padding: 20px 32px;
+      background: linear-gradient(135deg, rgba(0,212,170,0.15), rgba(99,102,241,0.15));
+      border: 2px solid var(--primary);
+      border-radius: 16px;
+      text-align: center;
+      min-height: 80px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+    }
+
+    .wheel-result-text {
+      font-family: var(--font-head);
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--primary);
+    }
+
+    .wheel-items-input {
+      width: 100%;
+      padding: 12px 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 14px;
+      outline: none;
+    }
+
+    .wheel-items-input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(0,212,170,0.1);
+    }
+
+    /* ── WHITEBOARD ── */
+    .whiteboard-container {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .whiteboard-tools {
+      display: flex;
+      gap: 8px;
+      padding: 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      flex-wrap: wrap;
+    }
+
+    .tool-btn {
+      padding: 8px 16px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .tool-btn:hover { background: var(--surface3); }
+    .tool-btn.active { background: var(--primary); color: #000; border-color: var(--primary); }
+
+    .color-picker {
+      display: flex;
+      gap: 6px;
+    }
+
+    .color-swatch {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: all 0.2s;
+    }
+
+    .color-swatch.active { border-color: #fff; transform: scale(1.1); }
+
+    #whiteboardCanvas {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+      cursor: crosshair;
+    }
+
+    /* ── TIMER ── */
+    .timer-display {
+      text-align: center;
+      padding: 60px 40px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      margin-bottom: 32px;
+    }
+
+    .timer-time {
+      font-family: var(--font-head);
+      font-size: 96px;
+      font-weight: 800;
+      letter-spacing: -2px;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1;
+    }
+
+    .timer-label {
+      font-size: 18px;
+      color: var(--muted);
+      margin-top: 16px;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+    }
+
+    .timer-controls {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .timer-preset {
+      padding: 12px 24px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .timer-preset:hover { border-color: var(--primary); color: var(--primary); }
+
+    /* ── CHAT SIDEBAR ── */
+    .chat-sidebar {
+      width: 320px;
+      background: var(--surface);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .chat-header {
+      padding: 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .chat-header h3 {
+      font-family: var(--font-head);
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .chat-message {
+      padding: 12px 14px;
+      background: var(--surface2);
+      border-radius: 12px;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .chat-author {
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 4px;
+      font-size: 13px;
+    }
+
+    .chat-message.own {
+      background: rgba(0,212,170,0.12);
+      border: 1px solid rgba(0,212,170,0.2);
+    }
+
+    .chat-message.own .chat-author { color: var(--primary); }
+
+    .chat-input-area {
+      padding: 16px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 8px;
+    }
+
+    .chat-input {
+      flex: 1;
+      padding: 10px 14px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 14px;
+      outline: none;
+    }
+
+    .chat-input:focus { border-color: var(--primary); }
+
+    .chat-send {
+      width: 40px;
+      height: 40px;
+      background: var(--primary);
+      border: none;
+      border-radius: 8px;
+      color: #000;
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .chat-send:hover { background: #00b894; transform: scale(1.05); }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 1024px) {
+      .chat-sidebar { display: none; }
+    }
+
+    @media (max-width: 768px) {
+      .activities-sidebar { display: none; }
+      .event-header { padding: 16px 20px; }
+      .stage-content { padding: 20px; }
+    }
+
+    /* ── LOADING ── */
+    .spinner {
+      width: 20px;
+      height: 20px;
+      border: 2px solid rgba(0,0,0,0.2);
+      border-top-color: #000;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: inline-block;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 40px;
+      color: var(--muted);
+    }
+
+    .empty-icon { font-size: 48px; margin-bottom: 16px; opacity: 0.6; }
+  </style>
+</head>
+<body>
+
+<!-- EVENT HEADER -->
+<div class="event-header">
+  <div class="event-info">
+    <div class="event-color-bar" id="eventColorBar"></div>
+    <div class="event-text">
+      <div class="event-title" id="eventTitle">Loading Event...</div>
+      <div class="event-meta">
+        <span id="eventDate">—</span>
+        <span id="eventLocation">—</span>
+      </div>
+    </div>
+    <div class="live-badge">
+      <div class="live-dot"></div>
+      LIVE
+    </div>
+  </div>
+  <div class="header-actions">
+    <div class="participants-count">
+      <span>👥</span>
+      <span id="participantCount">0</span>
+    </div>
+    <button class="btn-exit" onclick="exitRoom()">← Exit Room</button>
+  </div>
+</div>
+
+<!-- MAIN LAYOUT -->
+<div class="event-room">
+
+  <!-- ACTIVITIES SIDEBAR -->
+  <aside class="activities-sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-title">Event Activities</div>
+      <p style="font-size:12px;color:var(--muted)">Select an activity to launch</p>
+    </div>
+    <div id="activitiesList">
+      <!-- Activities populated by JS -->
+    </div>
+  </aside>
+
+  <!-- MAIN STAGE -->
+  <main class="main-stage">
+    <div class="stage-content" id="stageContent">
+      <div class="stage-welcome">
+        <div class="welcome-icon">🎪</div>
+        <h1 class="welcome-title">Welcome to the Event Room</h1>
+        <p class="welcome-text">
+          Select an activity from the left sidebar to get started. You can launch polls, Q&A sessions, spin wheels, timers, and more!
+        </p>
+      </div>
+    </div>
+  </main>
+
+  <!-- CHAT SIDEBAR -->
+  <aside class="chat-sidebar">
+    <div class="chat-header">
+      <h3>Live Chat</h3>
+      <p style="font-size:12px;color:var(--muted);margin-top:4px">Talk with participants</p>
+    </div>
+    <div class="chat-messages" id="chatMessages">
+      <!-- Messages populated by JS -->
+    </div>
+    <div class="chat-input-area">
+      <input type="text" class="chat-input" id="chatInput" placeholder="Type a message..." onkeypress="if(event.key==='Enter') sendChatMessage()">
+      <button class="chat-send" onclick="sendChatMessage()">→</button>
+    </div>
+  </aside>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+// ── STATE ──────────────────────────────────────────────────────
+let currentUser = null;
+let currentEvent = null;
+let eventId = null;
+let userRole = null;
+let pollChart = null;
+let wheelSpinning = false;
+let wheelAngle = 0;
+let timerInterval = null;
+let timerSeconds = 0;
+
+// Canvas contexts
+let whiteboardCtx = null;
+let wheelCtx = null;
+let isDrawing = false;
+let currentTool = 'pen';
+let currentColor = '#000000';
+let brushSize = 3;
+
+// ── INIT ───────────────────────────────────────────────────────
+window.addEventListener('load', async () => {
+  const params = new URLSearchParams(window.location.search);
+  eventId = params.get('id');
+  if (!eventId) { window.location.href = 'index.html'; return; }
+
+  const session = await requireAuth();
+  if (!session) return;
+
+  currentUser = await getCurrentUser();
+  if (!currentUser) { await db.auth.signOut(); window.location.href = 'auth.html'; return; }
+
+  userRole = currentUser.role;
+
+  await loadEventData();
+  initActivities();
+  loadParticipantCount();
+  initRealtimeSubscriptions();
+});
+
+// ── LOAD EVENT DATA ────────────────────────────────────────────
+async function loadEventData() {
+  const { data, error } = await db.from('events').select('*').eq('id', eventId).single();
+  if (error || !data) {
+    toast('Event not found', 'error');
+    setTimeout(() => window.location.href = userRole === 'admin' ? 'admin.html' : 'participant.html', 1500);
+    return;
+  }
+
+  currentEvent = data;
+  document.getElementById('eventTitle').textContent = data.title;
+  document.getElementById('eventDate').textContent = formatDate(data.date);
+  document.getElementById('eventLocation').textContent = data.location;
+  document.getElementById('eventColorBar').style.background = data.banner_color || '#00d4aa';
+}
+
+async function loadParticipantCount() {
+  const { data } = await db.from('registrations').select('id').eq('event_id', eventId);
+  document.getElementById('participantCount').textContent = data?.length || 0;
+}
+
+// ── REALTIME SUBSCRIPTIONS ─────────────────────────────────────
+function initRealtimeSubscriptions() {
+  // Subscribe to chat messages
+  db.channel('chat-' + eventId)
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'event_chat', filter: `event_id=eq.${eventId}` }, payload => {
+      addChatMessage(payload.new);
+    })
+    .subscribe();
+
+  // Subscribe to poll votes
+  db.channel('poll-' + eventId)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'poll_votes', filter: `event_id=eq.${eventId}` }, () => {
+      if (currentActivityId?.startsWith('poll-')) loadPollResults(currentActivityId);
+    })
+    .subscribe();
+}
+
+// ── ACTIVITIES ─────────────────────────────────────────────────
+const activities = [
+  { id: 'poll-1', name: 'Quick Poll', desc: 'Live audience voting', icon: '📊', bg: 'rgba(0,212,170,0.12)', status: 'ready' },
+  { id: 'qa-1', name: 'Q&A Session', desc: 'Collect questions', icon: '💬', bg: 'rgba(99,102,241,0.12)', status: 'ready' },
+  { id: 'wheel-1', name: 'Spin Wheel', desc: 'Random selection', icon: '🎡', bg: 'rgba(245,158,11,0.12)', status: 'ready' },
+  { id: 'timer-1', name: 'Timer', desc: 'Countdown clock', icon: '⏱', bg: 'rgba(239,68,68,0.12)', status: 'ready' },
+  { id: 'whiteboard-1', name: 'Whiteboard', desc: 'Draw & annotate', icon: '✏️', bg: 'rgba(139,92,246,0.12)', status: 'ready' },
+  { id: 'reactions-1', name: 'Reactions', desc: 'Emoji feedback', icon: '👏', bg: 'rgba(236,72,153,0.12)', status: 'ready' }
+];
+
+let currentActivityId = null;
+
+function initActivities() {
+  const list = document.getElementById('activitiesList');
+  list.innerHTML = activities.map(a => `
+    <div class="activity-item ${a.id === currentActivityId ? 'active' : ''}" onclick="launchActivity('${a.id}')">
+      <div class="activity-icon" style="background:${a.bg}">${a.icon}</div>
+      <div class="activity-info">
+        <div class="activity-name">${a.name}</div>
+        <div class="activity-desc">${a.desc}</div>
+      </div>
+      <div class="activity-status status-${a.status}">${a.status}</div>
+    </div>
+  `).join('');
+}
+
+function launchActivity(activityId) {
+  currentActivityId = activityId;
+  document.querySelectorAll('.activity-item').forEach(el => el.classList.remove('active'));
+  document.querySelector(`[onclick="launchActivity('${activityId}')"]`)?.classList.add('active');
+
+  const stage = document.getElementById('stageContent');
+
+  if (activityId.startsWith('poll-')) renderPoll(stage);
+  else if (activityId.startsWith('qa-')) renderQA(stage);
+  else if (activityId.startsWith('wheel-')) renderWheel(stage);
+  else if (activityId.startsWith('timer-')) renderTimer(stage);
+  else if (activityId.startsWith('whiteboard-')) renderWhiteboard(stage);
+  else if (activityId.startsWith('reactions-')) renderReactions(stage);
+}
+
+// ── POLL ───────────────────────────────────────────────────────
+function renderPoll(container) {
+  container.innerHTML = `
+    <div class="activity-container">
+      <div class="activity-header">
+        <div class="activity-title-block">
+          <h2>📊 Live Poll</h2>
+          <p>Ask your audience a question and see results in real-time</p>
+        </div>
+        ${userRole === 'admin' ? '<button class="btn-primary" onclick="createNewPoll()">+ New Poll</button>' : ''}
+      </div>
+      <div id="pollContent">
+        <div class="empty-state">
+          <div class="empty-icon">📊</div>
+          <h3 style="font-family:var(--font-head);font-size:20px;font-weight:700;color:var(--text);margin-bottom:8px">No active poll</h3>
+          <p style="font-size:14px;line-height:1.6">${userRole === 'admin' ? 'Click "New Poll" to create one' : 'Waiting for organizer to launch a poll'}</p>
+        </div>
+      </div>
+    </div>`;
+  loadActivePoll();
+}
+
+async function loadActivePoll() {
+  const { data } = await db.from('polls').select('*').eq('event_id', eventId).eq('is_active', true).order('created_at', { ascending: false }).limit(1).single();
+  if (!data) return;
+
+  const pollContent = document.getElementById('pollContent');
+  const { data: votes } = await db.from('poll_votes').select('option_index').eq('poll_id', data.id);
+  const votesCount = votes?.length || 0;
+
+  const options = JSON.parse(data.options || '[]');
+  const results = options.map((opt, i) => votes?.filter(v => v.option_index === i).length || 0);
+  const total = results.reduce((a, b) => a + b, 0);
+
+  const { data: userVote } = await db.from('poll_votes').select('option_index').eq('poll_id', data.id).eq('user_id', currentUser.id).single();
+
+  pollContent.innerHTML = `
+    <div class="poll-question">${data.question}</div>
+    <div class="poll-options">
+      ${options.map((opt, i) => `
+        <div class="poll-option ${userVote?.option_index === i ? 'selected' : ''}" onclick="${userVote ? '' : `votePoll('${data.id}', ${i})`}">
+          <div class="poll-option-bar" style="width:${total ? (results[i] / total * 100) : 0}%"></div>
+          <div class="poll-option-content">
+            <div class="poll-option-text">${opt}</div>
+            <div class="poll-option-percent">${total ? Math.round(results[i] / total * 100) : 0}%</div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+    <p style="text-align:center;color:var(--muted);font-size:14px;margin-top:16px">${total} vote${total !== 1 ? 's' : ''} • ${userVote ? 'You voted' : 'Click to vote'}</p>
+    <div class="poll-results-chart"><canvas id="pollChart" height="200"></canvas></div>
+  `;
+
+  renderPollChart(options, results);
+}
+
+function renderPollChart(labels, data) {
+  if (pollChart) pollChart.destroy();
+  pollChart = new Chart(document.getElementById('pollChart'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Votes',
+        data,
+        backgroundColor: 'rgba(0,212,170,0.6)',
+        borderRadius: 8,
+        borderSkipped: false
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: 'rgba(241,241,245,0.5)' }, grid: { display: false } },
+        y: { ticks: { color: 'rgba(241,241,245,0.5)', stepSize: 1 }, grid: { color: 'rgba(255,255,255,0.04)' } }
+      }
+    }
+  });
+}
+
+async function votePoll(pollId, optionIndex) {
+  const { error } = await db.from('poll_votes').insert({ poll_id: pollId, user_id: currentUser.id, option_index: optionIndex, event_id: eventId });
+  if (error) return toast(error.message, 'error');
+  loadActivePoll();
+}
+
+async function createNewPoll() {
+  const question = prompt('Enter poll question:');
+  if (!question) return;
+  const optionsStr = prompt('Enter options (comma separated):');
+  if (!optionsStr) return;
+  const options = optionsStr.split(',').map(s => s.trim()).filter(Boolean);
+  if (options.length < 2) return toast('Need at least 2 options', 'error');
+
+  const { error } = await db.from('polls').insert({ event_id: eventId, question, options: JSON.stringify(options), is_active: true });
+  if (error) return toast(error.message, 'error');
+  toast('Poll created!', 'success');
+  loadActivePoll();
+}
+
+async function loadPollResults(pollId) {
+  // Refresh poll data
+  loadActivePoll();
+}
+
+// ── Q&A ────────────────────────────────────────────────────────
+function renderQA(container) {
+  container.innerHTML = `
+    <div class="activity-container">
+      <div class="activity-header">
+        <div class="activity-title-block">
+          <h2>💬 Q&A Session</h2>
+          <p>Participants can ask questions, vote on them</p>
+        </div>
+      </div>
+      <div class="qa-input-section">
+        <div class="qa-input-wrapper">
+          <input type="text" class="qa-input" id="qaInput" placeholder="Ask a question...">
+          <button class="btn-primary" onclick="submitQuestion()">Submit</button>
+        </div>
+      </div>
+      <div class="qa-list" id="qaList">
+        <div class="empty-state"><div class="empty-icon">💬</div><p>No questions yet. Be the first to ask!</p></div>
+      </div>
+    </div>`;
+  loadQuestions();
+}
+
+async function loadQuestions() {
+  const { data } = await db.from('qa_questions').select('*, profiles(full_name)').eq('event_id', eventId).order('votes', { ascending: false });
+  const list = document.getElementById('qaList');
+  if (!data?.length) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-icon">💬</div><p>No questions yet. Be the first to ask!</p></div>';
+    return;
+  }
+
+  list.innerHTML = data.map(q => `
+    <div class="qa-card">
+      <div class="qa-vote">
+        <button class="vote-btn" onclick="voteQuestion('${q.id}', true)">▲</button>
+        <div class="vote-count">${q.votes || 0}</div>
+        <button class="vote-btn" onclick="voteQuestion('${q.id}', false)">▼</button>
+      </div>
+      <div class="qa-content">
+        <div class="qa-question">${q.question}</div>
+        <div class="qa-meta">Asked by ${q.profiles?.full_name || 'Anonymous'} • ${timeAgo(q.created_at)}</div>
+        ${q.answer ? `<div class="qa-answer"><div class="qa-answer-label">Answer</div>${q.answer}</div>` : ''}
+        ${userRole === 'admin' && !q.answer ? `<button class="btn-secondary" style="margin-top:12px;font-size:13px" onclick="answerQuestion('${q.id}')">Answer</button>` : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+async function submitQuestion() {
+  const input = document.getElementById('qaInput');
+  const question = input.value.trim();
+  if (!question) return;
+
+  const { error } = await db.from('qa_questions').insert({ event_id: eventId, user_id: currentUser.id, question, votes: 0 });
+  if (error) return toast(error.message, 'error');
+  input.value = '';
+  toast('Question submitted!', 'success');
+  loadQuestions();
+}
+
+async function voteQuestion(questionId, isUp) {
+  const { data: current } = await db.from('qa_questions').select('votes').eq('id', questionId).single();
+  const newVotes = (current?.votes || 0) + (isUp ? 1 : -1);
+  const { error } = await db.from('qa_questions').update({ votes: Math.max(0, newVotes) }).eq('id', questionId);
+  if (error) return toast(error.message, 'error');
+  loadQuestions();
+}
+
+async function answerQuestion(questionId) {
+  const answer = prompt('Enter your answer:');
+  if (!answer) return;
+  const { error } = await db.from('qa_questions').update({ answer }).eq('id', questionId);
+  if (error) return toast(error.message, 'error');
+  toast('Answer posted!', 'success');
+  loadQuestions();
+}
+
+// ── SPIN WHEEL ─────────────────────────────────────────────────
+function renderWheel(container) {
+  container.innerHTML = `
+    <div class="activity-container">
+      <div class="activity-header">
+        <div class="activity-title-block">
+          <h2>🎡 Spin the Wheel</h2>
+          <p>Random selection tool for giveaways and prizes</p>
+        </div>
+      </div>
+      <div class="wheel-container">
+        <div class="wheel-canvas-wrap">
+          <div class="wheel-pointer">🔻</div>
+          <canvas id="wheelCanvas" width="400" height="400"></canvas>
+        </div>
+        <div class="wheel-controls">
+          <div class="wheel-result">
+            <div class="wheel-result-text" id="wheelResult">Spin to select!</div>
+          </div>
+          <input type="text" class="wheel-items-input" id="wheelItems" placeholder="Enter items (comma separated)" value="Prize 1, Prize 2, Prize 3, Prize 4, Prize 5, Prize 6">
+          <button class="btn-primary" onclick="spinWheel()" id="btnSpin" style="width:100%;justify-content:center;padding:16px">🎡 SPIN</button>
+        </div>
+      </div>
+    </div>`;
+  initWheel();
+}
+
+function initWheel() {
+  const canvas = document.getElementById('wheelCanvas');
+  wheelCtx = canvas.getContext('2d');
+  drawWheel();
+}
+
+function drawWheel() {
+  const items = document.getElementById('wheelItems').value.split(',').map(s => s.trim()).filter(Boolean);
+  if (!items.length) return;
+
+  const canvas = document.getElementById('wheelCanvas');
+  const ctx = wheelCtx;
+  const centerX = canvas.width / 2;
+  const centerY = canvas.height / 2;
+  const radius = 180;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  const sliceAngle = (2 * Math.PI) / items.length;
+  const colors = ['#00d4aa', '#6366f1', '#f59e0b', '#ef4444', '#ec4899', '#8b5cf6', '#22c55e', '#0ea5e9'];
+
+  items.forEach((item, i) => {
+    const startAngle = wheelAngle + i * sliceAngle;
+    const endAngle = startAngle + sliceAngle;
+
+    ctx.beginPath();
+    ctx.moveTo(centerX, centerY);
+    ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+    ctx.fillStyle = colors[i % colors.length];
+    ctx.fill();
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    ctx.save();
+    ctx.translate(centerX, centerY);
+    ctx.rotate(startAngle + sliceAngle / 2);
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#000';
+    ctx.font = 'bold 14px DM Sans';
+    ctx.fillText(item, radius - 10, 5);
+    ctx.restore();
+  });
+
+  // Center circle
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, 20, 0, 2 * Math.PI);
+  ctx.fillStyle = '#000';
+  ctx.fill();
+}
+
+function spinWheel() {
+  if (wheelSpinning) return;
+  const items = document.getElementById('wheelItems').value.split(',').map(s => s.trim()).filter(Boolean);
+  if (!items.length) return toast('Add items first', 'warning');
+
+  wheelSpinning = true;
+  document.getElementById('btnSpin').disabled = true;
+  document.getElementById('wheelResult').textContent = 'Spinning...';
+
+  const spins = 5 + Math.random() * 3;
+  const totalRotation = spins * 2 * Math.PI;
+  const duration = 3000;
+  const startTime = Date.now();
+
+  function animate() {
+    const elapsed = Date.now() - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const easeOut = 1 - Math.pow(1 - progress, 3);
+
+    wheelAngle = easeOut * totalRotation;
+    drawWheel();
+
+    if (progress < 1) {
+      requestAnimationFrame(animate);
+    } else {
+      wheelSpinning = false;
+      document.getElementById('btnSpin').disabled = false;
+      const finalAngle = wheelAngle % (2 * Math.PI);
+      const sliceAngle = (2 * Math.PI) / items.length;
+      const winningIndex = items.length - 1 - Math.floor(finalAngle / sliceAngle);
+      document.getElementById('wheelResult').textContent = `🎉 ${items[winningIndex]}`;
+    }
+  }
+
+  animate();
+}
+
+// ── TIMER ──────────────────────────────────────────────────────
+function renderTimer(container) {
+  container.innerHTML = `
+    <div class="activity-container">
+      <div class="activity-header">
+        <div class="activity-title-block">
+          <h2>⏱ Timer</h2>
+          <p>Countdown clock for time management</p>
+        </div>
+      </div>
+      <div class="timer-display">
+        <div class="timer-time" id="timerDisplay">00:00</div>
+        <div class="timer-label" id="timerLabel">READY</div>
+      </div>
+      <div class="timer-controls">
+        <button class="timer-preset" onclick="setTimer(60)">1 min</button>
+        <button class="timer-preset" onclick="setTimer(300)">5 min</button>
+        <button class="timer-preset" onclick="setTimer(600)">10 min</button>
+        <button class="timer-preset" onclick="setTimer(900)">15 min</button>
+        <button class="btn-primary" onclick="toggleTimer()" id="btnTimer">▶ Start</button>
+        <button class="btn-secondary" onclick="resetTimer()">Reset</button>
+      </div>
+    </div>`;
+}
+
+function setTimer(seconds) {
+  timerSeconds = seconds;
+  updateTimerDisplay();
+}
+
+function updateTimerDisplay() {
+  const mins = Math.floor(timerSeconds / 60);
+  const secs = timerSeconds % 60;
+  document.getElementById('timerDisplay').textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+}
+
+function toggleTimer() {
+  if (timerInterval) {
+    clearInterval(timerInterval);
+    timerInterval = null;
+    document.getElementById('btnTimer').textContent = '▶ Start';
+    document.getElementById('timerLabel').textContent = 'PAUSED';
+  } else {
+    if (timerSeconds === 0) return toast('Set a time first', 'warning');
+    timerInterval = setInterval(() => {
+      timerSeconds--;
+      updateTimerDisplay();
+      if (timerSeconds === 0) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+        document.getElementById('btnTimer').textContent = '▶ Start';
+        document.getElementById('timerLabel').textContent = 'TIME\'S UP!';
+        toast('⏰ Time\'s up!', 'info');
+      }
+    }, 1000);
+    document.getElementById('btnTimer').textContent = '⏸ Pause';
+    document.getElementById('timerLabel').textContent = 'RUNNING';
+  }
+}
+
+function resetTimer() {
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = null;
+  timerSeconds = 0;
+  updateTimerDisplay();
+  document.getElementById('btnTimer').textContent = '▶ Start';
+  document.getElementById('timerLabel').textContent = 'READY';
+}
+
+// ── WHITEBOARD ─────────────────────────────────────────────────
+function renderWhiteboard(container) {
+  container.innerHTML = `
+    <div class="activity-container">
+      <div class="activity-header">
+        <div class="activity-title-block">
+          <h2>✏️ Whiteboard</h2>
+          <p>Collaborative drawing and annotations</p>
+        </div>
+        <button class="btn-secondary" onclick="clearWhiteboard()">Clear</button>
+      </div>
+      <div class="whiteboard-container">
+        <div class="whiteboard-tools">
+          <button class="tool-btn active" onclick="selectTool('pen', this)">🖊 Pen</button>
+          <button class="tool-btn" onclick="selectTool('eraser', this)">🧹 Eraser</button>
+          <div class="color-picker">
+            <div class="color-swatch active" style="background:#000" onclick="selectColor('#000', this)"></div>
+            <div class="color-swatch" style="background:#00d4aa" onclick="selectColor('#00d4aa', this)"></div>
+            <div class="color-swatch" style="background:#6366f1" onclick="selectColor('#6366f1', this)"></div>
+            <div class="color-swatch" style="background:#f59e0b" onclick="selectColor('#f59e0b', this)"></div>
+            <div class="color-swatch" style="background:#ef4444" onclick="selectColor('#ef4444', this)"></div>
+          </div>
+          <input type="range" min="1" max="20" value="3" oninput="brushSize=this.value" style="width:120px">
+        </div>
+        <canvas id="whiteboardCanvas" width="800" height="500"></canvas>
+      </div>
+    </div>`;
+  initWhiteboard();
+}
+
+function initWhiteboard() {
+  const canvas = document.getElementById('whiteboardCanvas');
+  whiteboardCtx = canvas.getContext('2d');
+  whiteboardCtx.fillStyle = '#fff';
+  whiteboardCtx.fillRect(0, 0, canvas.width, canvas.height);
+
+  canvas.addEventListener('mousedown', startDrawing);
+  canvas.addEventListener('mousemove', draw);
+  canvas.addEventListener('mouseup', stopDrawing);
+  canvas.addEventListener('mouseout', stopDrawing);
+}
+
+function startDrawing(e) {
+  isDrawing = true;
+  const rect = e.target.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+  whiteboardCtx.beginPath();
+  whiteboardCtx.moveTo(x, y);
+}
+
+function draw(e) {
+  if (!isDrawing) return;
+  const rect = e.target.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+
+  whiteboardCtx.lineWidth = brushSize;
+  whiteboardCtx.lineCap = 'round';
+  whiteboardCtx.strokeStyle = currentTool === 'eraser' ? '#fff' : currentColor;
+  whiteboardCtx.lineTo(x, y);
+  whiteboardCtx.stroke();
+}
+
+function stopDrawing() {
+  isDrawing = false;
+}
+
+function selectTool(tool, el) {
+  currentTool = tool;
+  document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function selectColor(color, el) {
+  currentColor = color;
+  document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function clearWhiteboard() {
+  whiteboardCtx.fillStyle = '#fff';
+  whiteboardCtx.fillRect(0, 0, document.getElementById('whiteboardCanvas').width, document.getElementById('whiteboardCanvas').height);
+}
+
+// ── REACTIONS ──────────────────────────────────────────────────
+function renderReactions(container) {
+  container.innerHTML = `
+    <div class="activity-container">
+      <div class="activity-header">
+        <div class="activity-title-block">
+          <h2>👏 Live Reactions</h2>
+          <p>Express yourself with emoji reactions</p>
+        </div>
+      </div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;justify-content:center;padding:40px">
+        ${['👏','❤️','😂','🎉','🔥','👍','💯','✨'].map(emoji => `
+          <button style="width:80px;height:80px;font-size:40px;background:var(--surface);border:1px solid var(--border);border-radius:16px;cursor:pointer;transition:all 0.2s" onclick="sendReaction('${emoji}')" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">${emoji}</button>
+        `).join('')}
+      </div>
+      <div id="reactionsStream" style="text-align:center;font-size:48px;min-height:100px;display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap"></div>
+    </div>`;
+}
+
+function sendReaction(emoji) {
+  const stream = document.getElementById('reactionsStream');
+  const span = document.createElement('span');
+  span.textContent = emoji;
+  span.style.animation = 'fadeUp 0.5s ease';
+  stream.appendChild(span);
+  setTimeout(() => span.remove(), 2000);
+}
+
+// ── CHAT ───────────────────────────────────────────────────────
+async function sendChatMessage() {
+  const input = document.getElementById('chatInput');
+  const message = input.value.trim();
+  if (!message) return;
+
+  const { error } = await db.from('event_chat').insert({ event_id: eventId, user_id: currentUser.id, message });
+  if (error) return toast(error.message, 'error');
+  input.value = '';
+}
+
+function addChatMessage(msg) {
+  const container = document.getElementById('chatMessages');
+  const div = document.createElement('div');
+  div.className = `chat-message ${msg.user_id === currentUser.id ? 'own' : ''}`;
+  div.innerHTML = `<div class="chat-author">${msg.user_id === currentUser.id ? 'You' : 'Participant'}</div>${msg.message}`;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+// ── EXIT ───────────────────────────────────────────────────────
+function exitRoom() {
+  window.location.href = userRole === 'admin' ? 'admin.html' : 'participant.html';
+}
+
+</script>
+</body>
+</html>

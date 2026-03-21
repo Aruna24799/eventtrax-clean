@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EventTrax — Participant Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg:#080810;--surface:#0e0e1a;--surface2:#141424;--surface3:#1a1a2e;
+      --border:rgba(255,255,255,.07);--primary:#00d4aa;--secondary:#6366f1;
+      --accent:#f59e0b;--red:#ef4444;--green:#22c55e;--text:#f1f1f5;
+      --muted:rgba(241,241,245,.45);--font-head:'Syne',sans-serif;--font-body:'DM Sans',sans-serif;
+      --sidebar:260px}
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:var(--font-body);background:var(--bg);color:var(--text);display:flex;min-height:100vh}
+    #authLoader{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;
+      flex-direction:column;align-items:center;justify-content:center;gap:16px}
+    .ld-logo{font-family:var(--font-head);font-size:22px;font-weight:800;display:flex;align-items:center;gap:10px}
+    .ld-icon{width:36px;height:36px;background:linear-gradient(135deg,var(--secondary),#818cf8);
+      border-radius:10px;display:flex;align-items:center;justify-content:center}
+    .ld-sp{width:44px;height:44px;border:3px solid rgba(99,102,241,.15);border-top-color:var(--secondary);
+      border-radius:50%;animation:spin .8s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .sidebar{width:var(--sidebar);background:var(--surface);border-right:1px solid var(--border);
+      display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100}
+    .sb-logo{padding:24px;border-bottom:1px solid var(--border);display:flex;align-items:center;
+      gap:10px;font-family:var(--font-head);font-size:18px;font-weight:800}
+    .logo-icon{width:32px;height:32px;background:linear-gradient(135deg,var(--secondary),#818cf8);
+      border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px}
+    .sb-label{padding:20px 24px 8px;font-size:10px;font-weight:700;text-transform:uppercase;
+      letter-spacing:2px;color:var(--muted)}
+    nav{flex:1;padding:8px 12px}
+    .nav-item{display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:10px;
+      font-size:14px;font-weight:500;color:var(--muted);cursor:pointer;transition:all .2s;
+      margin-bottom:2px;border:none;background:none;width:100%;text-align:left;font-family:var(--font-body)}
+    .nav-item:hover{background:rgba(255,255,255,.04);color:var(--text)}
+    .nav-item.active{background:rgba(99,102,241,.1);color:#818cf8;font-weight:600}
+    .nav-item .icon{font-size:18px;width:24px;text-align:center}
+    .sb-user{padding:20px 24px;border-top:1px solid var(--border);display:flex;align-items:center;gap:12px}
+    .u-avatar{width:38px;height:38px;background:linear-gradient(135deg,var(--secondary),#818cf8);
+      border-radius:50%;display:flex;align-items:center;justify-content:center;
+      font-weight:700;font-size:16px;color:#fff;flex-shrink:0}
+    .u-info{flex:1;min-width:0}
+    .u-name{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .u-role{font-size:11px;color:#818cf8;background:rgba(99,102,241,.08);padding:2px 8px;
+      border-radius:100px;display:inline-block;margin-top:2px}
+    .btn-logout{background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;
+      padding:4px;transition:color .2s}
+    .btn-logout:hover{color:var(--red)}
+    .main{margin-left:var(--sidebar);flex:1;min-height:100vh}
+    .topbar{height:64px;border-bottom:1px solid var(--border);display:flex;align-items:center;
+      justify-content:space-between;padding:0 32px;background:rgba(8,8,16,.8);
+      backdrop-filter:blur(20px);position:sticky;top:0;z-index:50}
+    .topbar-title{font-family:var(--font-head);font-size:18px;font-weight:700}
+    .page{display:none;padding:32px}
+    .page.active{display:block}
+    .events-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px}
+    .event-card{background:var(--surface);border:1px solid var(--border);border-radius:20px;
+      overflow:hidden;transition:all .3s}
+    .event-card:hover{transform:translateY(-4px);box-shadow:0 20px 60px rgba(0,0,0,.4);
+      border-color:rgba(255,255,255,.1)}
+    .ev-banner{height:8px}
+    .ev-body{padding:24px}
+    .ev-meta{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+    .ev-cat{padding:3px 10px;background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.2);
+      border-radius:100px;font-size:11px;font-weight:600;color:#818cf8}
+    .ev-title{font-family:var(--font-head);font-size:18px;font-weight:700;margin-bottom:8px;line-height:1.3}
+    .ev-desc{font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:16px;
+      display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+    .ev-details{display:flex;flex-direction:column;gap:6px;margin-bottom:20px}
+    .ev-detail{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+    .ev-footer{display:flex;align-items:center;justify-content:space-between;
+      padding-top:16px;border-top:1px solid var(--border);gap:8px}
+    .status-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;
+      border-radius:100px;font-size:11px;font-weight:600}
+    .badge-dot{width:5px;height:5px;border-radius:50%}
+    .btn-primary{padding:10px 20px;background:linear-gradient(135deg,var(--primary),#00b894);
+      color:#000;border:none;border-radius:10px;font-family:var(--font-body);font-size:14px;
+      font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px;transition:all .2s}
+    .btn-primary:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 4px 20px rgba(0,212,170,.3)}
+    .btn-primary:disabled{opacity:.6;cursor:not-allowed;transform:none}
+    .btn-primary.registered{background:linear-gradient(135deg,#6366f1,#818cf8);color:#fff}
+    .btn-secondary{padding:10px 16px;background:var(--surface2);color:var(--text);
+      border:1px solid var(--border);border-radius:10px;font-family:var(--font-body);
+      font-size:14px;font-weight:500;cursor:pointer;transition:all .2s}
+    .btn-secondary:hover{border-color:rgba(255,255,255,.15)}
+    .filter-bar{display:flex;gap:12px;margin-bottom:28px;flex-wrap:wrap;align-items:center}
+    .search-wrap{display:flex;align-items:center;gap:10px;background:var(--surface);
+      border:1px solid var(--border);border-radius:10px;padding:10px 14px;flex:1;max-width:380px}
+    .search-wrap input{background:none;border:none;outline:none;color:var(--text);
+      font-family:var(--font-body);font-size:14px;width:100%}
+    .search-wrap input::placeholder{color:var(--muted)}
+    .chip{padding:8px 16px;background:var(--surface);border:1px solid var(--border);
+      border-radius:100px;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;
+      transition:all .2s;font-family:var(--font-body)}
+    .chip.active{border-color:var(--secondary);color:#818cf8;background:rgba(99,102,241,.08)}
+    .chip:hover{border-color:rgba(255,255,255,.15);color:var(--text)}
+    .reg-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;
+      padding:24px;margin-bottom:16px;display:flex;gap:20px;align-items:flex-start;transition:all .2s}
+    .reg-card:hover{border-color:rgba(255,255,255,.12)}
+    .reg-color{width:6px;border-radius:4px;align-self:stretch;flex-shrink:0}
+    .reg-info{flex:1}
+    .reg-title{font-family:var(--font-head);font-size:17px;font-weight:700;margin-bottom:6px}
+    .reg-meta{font-size:13px;color:var(--muted);display:flex;gap:16px;flex-wrap:wrap}
+    .reg-actions{display:flex;gap:8px;align-items:center;flex-shrink:0;flex-wrap:wrap}
+    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);backdrop-filter:blur(12px);
+      z-index:200;display:none;align-items:center;justify-content:center}
+    .modal-overlay.open{display:flex}
+    .modal{background:var(--surface);border:1px solid var(--border);border-radius:24px;
+      padding:40px;width:440px;max-width:95vw;text-align:center;position:relative}
+    .modal h2{font-family:var(--font-head);font-size:22px;font-weight:800;margin-bottom:6px}
+    .modal p{color:var(--muted);font-size:14px;margin-bottom:24px}
+    .qr-wrap{display:inline-block;padding:20px;background:#fff;border-radius:16px;margin-bottom:20px}
+    .token{font-family:monospace;font-size:12px;color:var(--primary);
+      background:rgba(0,212,170,.08);border:1px solid rgba(0,212,170,.2);
+      border-radius:8px;padding:10px 14px;word-break:break-all;margin-bottom:20px}
+    .close-btn{position:absolute;top:16px;right:16px;width:36px;height:36px;
+      border:1px solid var(--border);background:var(--surface2);border-radius:8px;
+      display:flex;align-items:center;justify-content:center;cursor:pointer;
+      font-size:18px;color:var(--muted);transition:all .2s}
+    .close-btn:hover{color:var(--text)}
+    .star-row{display:flex;gap:8px;justify-content:center;margin-bottom:20px}
+    .star{font-size:32px;cursor:pointer;color:var(--muted);transition:all .15s;background:none;border:none}
+    .star.on,.star:hover{color:var(--accent);transform:scale(1.15)}
+    textarea{width:100%;padding:12px 14px;background:var(--surface2);border:1px solid var(--border);
+      border-radius:10px;color:var(--text);font-family:var(--font-body);font-size:14px;
+      outline:none;resize:vertical;min-height:100px;transition:all .2s}
+    textarea:focus{border-color:var(--secondary);box-shadow:0 0 0 3px rgba(99,102,241,.1)}
+    textarea::placeholder{color:var(--muted)}
+    .form-group{margin-bottom:20px;text-align:left}
+    label{display:block;font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px;
+      text-transform:uppercase;letter-spacing:.5px}
+    input[type=text],input[type=email]{width:100%;padding:12px 14px;background:var(--surface2);
+      border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:var(--font-body);
+      font-size:14px;outline:none;transition:all .2s}
+    input[type=text]:focus,input[type=email]:focus{border-color:var(--secondary);
+      box-shadow:0 0 0 3px rgba(99,102,241,.1)}
+    .profile-card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:40px;max-width:600px}
+    .profile-header{display:flex;align-items:center;gap:24px;margin-bottom:32px}
+    .p-avatar{width:80px;height:80px;background:linear-gradient(135deg,var(--secondary),#818cf8);
+      border-radius:50%;display:flex;align-items:center;justify-content:center;
+      font-family:var(--font-head);font-size:32px;font-weight:800;color:#fff}
+    .cert-card{background:var(--surface);border:1px solid rgba(245,158,11,.2);border-radius:16px;
+      padding:24px;margin-bottom:16px;display:flex;align-items:center;gap:20px}
+    .cert-id{font-family:monospace;font-size:12px;color:var(--accent);
+      background:rgba(245,158,11,.08);padding:4px 10px;border-radius:6px;display:inline-block;margin-top:4px}
+    .empty{text-align:center;padding:80px 40px;color:var(--muted)}
+    .empty-icon{font-size:48px;margin-bottom:16px}
+    .empty h3{font-family:var(--font-head);font-size:20px;font-weight:700;color:var(--text);margin-bottom:8px}
+    .empty p{font-size:14px;line-height:1.6}
+    .sp{width:40px;height:40px;border:3px solid rgba(99,102,241,.15);border-top-color:var(--secondary);
+      border-radius:50%;animation:spin .8s linear infinite}
+    .page-spinner{display:flex;align-items:center;justify-content:center;padding:80px}
+    @media(max-width:1024px){
+      :root{--sidebar:70px}
+      .nav-item span,.sb-label,.u-info,.sb-logo span{display:none}
+      .sb-logo,.sb-user,.nav-item{justify-content:center}
+    }
+    @media(max-width:640px){
+      .main{margin-left:0}.sidebar{transform:translateX(-100%)}
+      .page{padding:16px}.events-grid{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body>
+
+<div id="authLoader">
+  <div class="ld-logo"><div class="ld-icon">⬡</div>EventTrax</div>
+  <div class="ld-sp"></div>
+  <p style="color:var(--muted);font-size:14px">Verifying your session…</p>
+</div>
+
+<div id="app" style="display:contents;visibility:hidden">
+  <aside class="sidebar">
+    <div class="sb-logo"><div class="logo-icon">⬡</div><span>EventTrax</span></div>
+    <nav>
+      <div class="sb-label">Discover</div>
+      <button class="nav-item active" onclick="showPage('discover')"><span class="icon">🔍</span><span>Discover Events</span></button>
+      <div class="sb-label">My Activity</div>
+      <button class="nav-item" onclick="showPage('myevents')"><span class="icon">🗓</span><span>My Events</span></button>
+      <button class="nav-item" onclick="showPage('certificates')"><span class="icon">🏆</span><span>Certificates</span></button>
+      <div class="sb-label">Account</div>
+      <button class="nav-item" onclick="showPage('profile')"><span class="icon">👤</span><span>Profile</span></button>
+    </nav>
+    <div class="sb-user">
+      <div class="u-avatar" id="sbAvatar">P</div>
+      <div class="u-info"><div class="u-name" id="sbName">—</div><div class="u-role">Participant</div></div>
+      <button class="btn-logout" onclick="logout()" title="Logout">↪</button>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-title" id="topTitle">Discover Events</div>
+      <button class="btn-secondary" onclick="showPage('myevents')">My Events →</button>
+    </div>
+
+    <div class="page active" id="page-discover">
+      <div class="filter-bar">
+        <div class="search-wrap"><span>🔍</span>
+          <input type="text" id="searchInput" placeholder="Search events…" oninput="filterGrid()">
+        </div>
+        <button class="chip active" onclick="setFilter('all',this)">All</button>
+        <button class="chip" onclick="setFilter('Tech',this)">💻 Tech</button>
+        <button class="chip" onclick="setFilter('Business',this)">💼 Business</button>
+        <button class="chip" onclick="setFilter('Design',this)">🎨 Design</button>
+        <button class="chip" onclick="setFilter('Education',this)">📚 Education</button>
+      </div>
+      <div id="discoverGrid"><div class="page-spinner"><div class="sp"></div></div></div>
+    </div>
+
+    <div class="page" id="page-myevents">
+      <div style="margin-bottom:24px">
+        <h2 style="font-family:var(--font-head);font-size:24px;font-weight:800">My Registered Events</h2>
+        <p style="color:var(--muted);font-size:14px;margin-top:4px">Events you've joined</p>
+      </div>
+      <div id="myList"><div class="page-spinner"><div class="sp"></div></div></div>
+    </div>
+
+    <div class="page" id="page-certificates">
+      <div style="margin-bottom:24px">
+        <h2 style="font-family:var(--font-head);font-size:24px;font-weight:800">My Certificates</h2>
+        <p style="color:var(--muted);font-size:14px;margin-top:4px">Download your participation certificates</p>
+      </div>
+      <div id="certList"><div class="page-spinner"><div class="sp"></div></div></div>
+    </div>
+
+    <div class="page" id="page-profile">
+      <div class="profile-card" id="profileCard">
+        <div class="page-spinner"><div class="sp"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- QR Modal -->
+<div class="modal-overlay" id="qrModal">
+  <div class="modal">
+    <button class="close-btn" onclick="closeModal('qrModal')">✕</button>
+    <h2>Attendance QR</h2>
+    <p>Show this to the organizer to mark your attendance</p>
+    <div class="qr-wrap"><div id="qrCode"></div></div>
+    <div class="token" id="qrToken">—</div>
+    <p style="font-size:12px;color:var(--muted)">Unique token for this event.</p>
+  </div>
+</div>
+
+<!-- Feedback Modal -->
+<div class="modal-overlay" id="feedbackModal">
+  <div class="modal">
+    <button class="close-btn" onclick="closeModal('feedbackModal')">✕</button>
+    <h2>Rate This Event</h2>
+    <p id="fbTitle">Share your experience</p>
+    <div class="star-row">
+      <button class="star" onclick="setStar(1)">★</button>
+      <button class="star" onclick="setStar(2)">★</button>
+      <button class="star" onclick="setStar(3)">★</button>
+      <button class="star" onclick="setStar(4)">★</button>
+      <button class="star" onclick="setStar(5)">★</button>
+    </div>
+    <div class="form-group">
+      <textarea id="fbMsg" placeholder="Tell us what you thought… (optional)"></textarea>
+    </div>
+    <input type="hidden" id="fbEventId">
+    <button class="btn-primary" id="btnFb" onclick="submitFeedback()"
+      style="width:100%;justify-content:center">Submit Feedback</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<script>
+let ME = null;
+let EVENTS = [];
+let MY_REGS = [];
+let FILTER = 'all';
+let STAR = 0;
+
+// ── Boot ──────────────────────────────────────────────────────
+(async () => {
+  try {
+    const { data: { session } } = await db.auth.getSession();
+
+    if (!session) { window.location.href = 'auth.html'; return; }
+
+    ME = await getCurrentUser();
+    if (!ME) { await db.auth.signOut(); window.location.href = 'auth.html'; return; }
+    if (ME.role === 'admin') { window.location.href = 'admin.html'; return; }
+
+    document.getElementById('authLoader').style.display  = 'none';
+    document.getElementById('app').style.visibility = 'visible';
+    document.getElementById('sbName').textContent   = ME.full_name || 'Participant';
+    document.getElementById('sbAvatar').textContent = (ME.full_name || 'P')[0].toUpperCase();
+
+    await Promise.all([loadEvents(), loadMyRegs()]);
+  } catch (err) {
+    console.error('Boot error:', err);
+    window.location.href = 'auth.html';
+  }
+})();
+
+// ── Navigation ────────────────────────────────────────────────
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  document.getElementById('topTitle').textContent =
+    {discover:'Discover Events',myevents:'My Events',certificates:'Certificates',profile:'Profile'}[name];
+  const idx = {discover:0,myevents:1,certificates:2,profile:3}[name];
+  if (idx !== undefined) document.querySelectorAll('.nav-item')[idx]?.classList.add('active');
+  if (name === 'myevents')     loadMyEventsPage();
+  if (name === 'certificates') loadCerts();
+  if (name === 'profile')      loadProfile();
+}
+
+// ── Discover ──────────────────────────────────────────────────
+async function loadEvents() {
+  try {
+    const { data, error } = await db.from('events')
+      .select('*').in('status',['open','closed','completed'])
+      .order('date',{ ascending:true });
+    if (error) throw error;
+    EVENTS = data || [];
+    renderGrid(EVENTS);
+  } catch(e) {
+    document.getElementById('discoverGrid').innerHTML =
+      `<div class="empty"><div class="empty-icon">⚠️</div><h3>Could not load events</h3><p>${e.message}</p></div>`;
+  }
+}
+
+async function loadMyRegs() {
+  const { data } = await db.from('registrations').select('event_id').eq('user_id', ME.id);
+  MY_REGS = (data||[]).map(r=>r.event_id);
+}
+
+function setFilter(f, el) {
+  FILTER = f;
+  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active'); filterGrid();
+}
+
+function filterGrid() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  let list = EVENTS;
+  if (FILTER !== 'all') list = list.filter(e=>e.category===FILTER);
+  if (q) list = list.filter(e=>
+    e.title?.toLowerCase().includes(q)||
+    e.description?.toLowerCase().includes(q)||
+    e.location?.toLowerCase().includes(q)
+  );
+  renderGrid(list);
+}
+
+function renderGrid(list) {
+  const g = document.getElementById('discoverGrid');
+  if (!list.length) {
+    g.innerHTML='<div class="empty"><div class="empty-icon">🔍</div><h3>No events found</h3><p>Try a different search or check back later.</p></div>';
+    return;
+  }
+  g.innerHTML = `<div class="events-grid">${list.map(e=>{
+    const reg = MY_REGS.includes(e.id);
+    const open = e.status==='open';
+    return `<div class="event-card">
+      <div class="ev-banner" style="background:${e.banner_color||'#00d4aa'}"></div>
+      <div class="ev-body">
+        <div class="ev-meta">
+          <span class="ev-cat">${getCategoryEmoji(e.category)} ${e.category}</span>
+          ${badge(e.status)}
+        </div>
+        <h3 class="ev-title">${e.title}</h3>
+        <p class="ev-desc">${e.description||'No description provided.'}</p>
+        <div class="ev-details">
+          <div class="ev-detail">📅 ${formatDate(e.date)}${e.time?' at '+formatTime(e.time):''}</div>
+          <div class="ev-detail">📍 ${e.location}</div>
+          <div class="ev-detail">👥 ${e.capacity||'—'} spots</div>
+        </div>
+        <div class="ev-footer">
+          ${reg
+            ? `<button class="btn-primary registered" disabled>✓ Registered</button>
+               <button class="btn-secondary" onclick="showQR('${e.id}')" style="font-size:13px">📱 QR</button>`
+            : open
+              ? `<button class="btn-primary" onclick="register('${e.id}',this)">Register →</button>`
+              : `<button class="btn-secondary" disabled>Registration closed</button>`
+          }
+        </div>
+      </div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+function badge(status) {
+  const c={open:'#00d4aa',closed:'#ef4444',draft:'#6366f1',completed:'#f59e0b'}[status]||'#888';
+  return `<span class="status-badge" style="background:${c}18;color:${c}">
+    <span class="badge-dot" style="background:${c}"></span>${status}</span>`;
+}
+
+// ── Register ──────────────────────────────────────────────────
+async function register(eventId, btn) {
+  btn.disabled=true; btn.textContent='⏳ Joining…';
+  try {
+    const { error } = await db.from('registrations').insert({ event_id:eventId, user_id:ME.id });
+    if (error) {
+      toast(error.message.includes('duplicate')?'Already registered!':error.message,'error');
+      btn.disabled=false; btn.textContent='Register →'; return;
+    }
+    MY_REGS.push(eventId);
+    toast('Registered! Check your QR code 🎉','success');
+    filterGrid();
+  } catch(e) { toast(e.message,'error'); btn.disabled=false; btn.textContent='Register →'; }
+}
+
+// ── QR Code ───────────────────────────────────────────────────
+async function showQR(eventId) {
+  try {
+    const { data, error } = await db.from('registrations')
+      .select('qr_token').eq('event_id',eventId).eq('user_id',ME.id).single();
+    if (error || !data) return toast('Registration not found','error');
+    const tok = data.qr_token || `ET-${ME.id.slice(0,8)}-${eventId.slice(0,8)}`;
+    document.getElementById('qrToken').textContent = tok;
+    document.getElementById('qrCode').innerHTML = '';
+    new QRCode(document.getElementById('qrCode'),{
+      text:tok, width:180, height:180,
+      colorDark:'#000', colorLight:'#fff', correctLevel:QRCode.CorrectLevel.H
+    });
+    document.getElementById('qrModal').classList.add('open');
+  } catch(e) { toast(e.message,'error'); }
+}
+
+// ── My Events ─────────────────────────────────────────────────
+async function loadMyEventsPage() {
+  const c = document.getElementById('myList');
+  c.innerHTML='<div class="page-spinner"><div class="sp"></div></div>';
+  try {
+    const { data, error } = await db.from('registrations')
+      .select('*, events(*)').eq('user_id',ME.id)
+      .order('registered_at',{ ascending:false });
+    if (error) throw error;
+    if (!data?.length) {
+      c.innerHTML='<div class="empty"><div class="empty-icon">🗓</div><h3>No events yet</h3><p>Discover and register for events to see them here.</p></div>';
+      return;
+    }
+    c.innerHTML = data.map(r=>{
+      const e=r.events; if (!e) return '';
+      const canFb = e.status==='completed'||e.status==='closed';
+      return `<div class="reg-card">
+        <div class="reg-color" style="background:${e.banner_color||'#00d4aa'}"></div>
+        <div class="reg-info">
+          <div class="reg-title">${e.title}</div>
+          <div class="reg-meta">
+            <span>📅 ${formatDate(e.date)}</span>
+            <span>📍 ${e.location}</span>
+            <span>${getCategoryEmoji(e.category)} ${e.category}</span>
+          </div>
+          <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+            ${badge(e.status)}
+            ${r.attended?`<span class="status-badge" style="background:rgba(0,212,170,.1);color:#00d4aa"><span class="badge-dot" style="background:#00d4aa"></span>Attended</span>`:''}
+          </div>
+        </div>
+        <div class="reg-actions">
+          <button class="btn-primary" onclick="location.href='event-room.html?id=${e.id}'" style="font-size:13px;padding:8px 14px">🎪 Room</button>
+          <button class="btn-secondary" onclick="showQR('${e.id}')" style="font-size:13px">📱 QR</button>
+          ${canFb?`<button class="btn-secondary" onclick="openFb('${e.id}','${(e.title||'').replace(/'/g,"\\'")}') " style="font-size:13px">⭐ Rate</button>`:''}
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    c.innerHTML=`<div class="empty"><div class="empty-icon">⚠️</div><h3>Error</h3><p>${e.message}</p></div>`;
+  }
+}
+
+// ── Feedback ──────────────────────────────────────────────────
+function openFb(id, title) {
+  STAR=0;
+  document.getElementById('fbEventId').value=id;
+  document.getElementById('fbTitle').textContent=title;
+  document.getElementById('fbMsg').value='';
+  document.querySelectorAll('.star').forEach(s=>s.classList.remove('on'));
+  document.getElementById('feedbackModal').classList.add('open');
+}
+function setStar(n) {
+  STAR=n;
+  document.querySelectorAll('.star').forEach((s,i)=>s.classList.toggle('on',i<n));
+}
+async function submitFeedback() {
+  if (!STAR) return toast('Please select a rating','warning');
+  const btn = document.getElementById('btnFb');
+  showLoading(btn,'Submitting…');
+  try {
+    const { error } = await db.from('feedback').upsert({
+      event_id:document.getElementById('fbEventId').value,
+      user_id:ME.id, rating:STAR,
+      message:document.getElementById('fbMsg').value.trim()
+    },{ onConflict:'event_id,user_id' });
+    if (error) throw error;
+    toast('Feedback submitted! Thank you ⭐','success');
+    closeModal('feedbackModal');
+  } catch(e) { toast(e.message,'error'); }
+  hideLoading(btn);
+}
+
+// ── Certificates ──────────────────────────────────────────────
+async function loadCerts() {
+  const c = document.getElementById('certList');
+  c.innerHTML='<div class="page-spinner"><div class="sp"></div></div>';
+  try {
+    const { data, error } = await db.from('certificates')
+      .select('*, events(title,date)').eq('user_id',ME.id);
+    if (error) throw error;
+    if (!data?.length) {
+      c.innerHTML='<div class="empty"><div class="empty-icon">🏆</div><h3>No certificates yet</h3><p>Attend events to earn participation certificates.</p></div>';
+      return;
+    }
+    c.innerHTML = data.map(cert=>`
+      <div class="cert-card">
+        <span style="font-size:40px">🏆</span>
+        <div style="flex:1">
+          <div style="font-family:var(--font-head);font-size:16px;font-weight:700">${cert.events?.title||'Event'}</div>
+          <div style="font-size:13px;color:var(--muted);margin-top:4px">${formatDate(cert.events?.date)} • Issued ${timeAgo(cert.issued_at)}</div>
+          <div class="cert-id">${cert.cert_id}</div>
+        </div>
+        <button class="btn-primary" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#000"
+          onclick='downloadCertificate(${JSON.stringify({
+            participantName:ME.full_name,
+            eventName:cert.events?.title||"Event",
+            eventDate:formatDate(cert.events?.date),
+            certId:cert.cert_id,
+            issuedBy:"EventTrax"
+          })})'>⬇ Download</button>
+      </div>`).join('');
+
+  } catch(e) {
+    c.innerHTML=`<div class="empty"><div class="empty-icon">⚠️</div><h3>Error</h3><p>${e.message}</p></div>`;
+  }
+}
+
+// ── Profile ───────────────────────────────────────────────────
+function loadProfile() {
+  document.getElementById('profileCard').innerHTML = `
+    <div class="profile-header">
+      <div class="p-avatar">${(ME.full_name||'P')[0].toUpperCase()}</div>
+      <div>
+        <h2 style="font-family:var(--font-head);font-size:22px;font-weight:800">${ME.full_name||'Participant'}</h2>
+        <div style="color:var(--muted);font-size:14px;margin-top:4px">${ME.organization||'No organization set'}</div>
+        <span style="font-size:11px;color:#818cf8;background:rgba(99,102,241,.08);padding:3px 10px;
+          border-radius:100px;margin-top:8px;display:inline-block">Participant</span>
+      </div>
+    </div>
+    <div class="form-group"><label>Full Name</label><input type="text" id="pName" value="${ME.full_name||''}"></div>
+    <div class="form-group"><label>Organization</label><input type="text" id="pOrg" value="${ME.organization||''}"></div>
+    <div class="form-group"><label>Bio</label><textarea id="pBio">${ME.bio||''}</textarea></div>
+    <button class="btn-primary" id="btnSave" onclick="saveProfile()">Save Changes</button>
+    <button class="btn-secondary" onclick="logout()" style="margin-left:12px">Sign Out</button>`;
+}
+
+async function saveProfile() {
+  const name = document.getElementById('pName').value.trim();
+  const org  = document.getElementById('pOrg').value.trim();
+  const bio  = document.getElementById('pBio').value.trim();
+  if (!name) return toast('Name cannot be empty','error');
+  const btn = document.getElementById('btnSave');
+  showLoading(btn,'Saving…');
+  try {
+    const { error } = await db.from('profiles')
+      .update({ full_name:name, organization:org, bio }).eq('id', ME.id);
+    if (error) throw error;
+    ME.full_name=name; ME.organization=org; ME.bio=bio;
+    document.getElementById('sbName').textContent   = name;
+    document.getElementById('sbAvatar').textContent = name[0].toUpperCase();
+    toast('Profile updated!','success');
+  } catch(e) { toast(e.message,'error'); }
+  hideLoading(btn);
+}
+
+// ── Modals ────────────────────────────────────────────────────
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(m=>
+  m.addEventListener('click', e=>{ if(e.target===m) m.classList.remove('open'); })
+);
+</script>
+</body>
+</html> 

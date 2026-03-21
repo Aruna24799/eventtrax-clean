@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EventTrax — Sign In</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+<style>
+
+body{
+font-family:'DM Sans',sans-serif;
+background:#080810;
+color:#f1f1f5;
+min-height:100vh;
+display:flex;
+align-items:center;
+justify-content:center;
+}
+
+.card{
+background:#0e0e1a;
+border-radius:20px;
+padding:40px;
+width:420px;
+}
+
+.logo{
+font-family:'Syne',sans-serif;
+font-weight:800;
+font-size:22px;
+margin-bottom:30px;
+}
+
+.tabs{
+display:flex;
+margin-bottom:25px;
+}
+
+.tab{
+flex:1;
+padding:10px;
+border:none;
+cursor:pointer;
+background:#141424;
+color:#999;
+}
+
+.tab.active{
+background:#0e0e1a;
+color:white;
+}
+
+input{
+width:100%;
+padding:12px;
+margin-top:6px;
+margin-bottom:15px;
+background:#141424;
+border:none;
+color:white;
+border-radius:8px;
+}
+
+button{
+width:100%;
+padding:12px;
+background:#00d4aa;
+border:none;
+border-radius:10px;
+font-weight:700;
+cursor:pointer;
+}
+
+.err{
+background:#ef444422;
+color:#ef4444;
+padding:10px;
+margin-bottom:10px;
+display:none;
+}
+
+.roles{
+display:flex;
+gap:10px;
+margin-bottom:15px;
+}
+
+.role{
+flex:1;
+padding:10px;
+border:1px solid #333;
+cursor:pointer;
+text-align:center;
+}
+
+.sel-p{
+border-color:#00d4aa;
+}
+
+.sel-a{
+border-color:#6366f1;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="card">
+
+<div class="logo">EventTrax</div>
+
+<div class="tabs">
+<button class="tab active" id="tLogin" onclick="switchTab('login')">Sign In</button>
+<button class="tab" id="tSignup" onclick="switchTab('signup')">Create Account</button>
+</div>
+
+<div class="err" id="errBox"></div>
+
+<!-- LOGIN -->
+
+<div id="fLogin">
+
+<h2>Welcome back</h2>
+
+<label>Email</label>
+<input id="lEmail" type="email">
+
+<label>Password</label>
+<input id="lPass" type="password" onkeydown="if(event.key==='Enter')doLogin()">
+
+<button id="btnLogin" onclick="doLogin()">Sign In</button>
+
+</div>
+
+<!-- SIGNUP -->
+
+<div id="fSignup" style="display:none">
+
+<h2>Create Account</h2>
+
+<div class="roles">
+<div class="role sel-p" id="rPart" onclick="pickRole('participant')">Participant</div>
+<div class="role" id="rAdmin" onclick="pickRole('admin')">Organizer</div>
+</div>
+
+<label>Full Name</label>
+<input id="sName">
+
+<label>Email</label>
+<input id="sEmail">
+
+<label>Password</label>
+<input id="sPass" type="password" onkeydown="if(event.key==='Enter')doSignup()">
+
+<label>Organization</label>
+<input id="sOrg">
+
+<button id="btnSignup" onclick="doSignup()">Create Account</button>
+
+</div>
+
+</div>
+
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./config.js"></script>
+
+<script>
+
+let chosenRole = "participant";
+
+function showErr(msg){
+const box=document.getElementById("errBox");
+box.textContent=msg;
+box.style.display="block";
+}
+
+function clearErr(){
+document.getElementById("errBox").style.display="none";
+}
+
+function switchTab(tab){
+
+const login = tab==="login";
+
+document.getElementById("fLogin").style.display = login ? "block":"none";
+document.getElementById("fSignup").style.display = login ? "none":"block";
+
+document.getElementById("tLogin").classList.toggle("active",login);
+document.getElementById("tSignup").classList.toggle("active",!login);
+
+clearErr();
+
+}
+
+function pickRole(role){
+
+chosenRole = role;
+
+document.getElementById("rPart").classList.toggle("sel-p",role==="participant");
+document.getElementById("rAdmin").classList.toggle("sel-a",role==="admin");
+
+}
+
+async function doLogin(){
+
+clearErr();
+
+const email=document.getElementById("lEmail").value.trim();
+const password=document.getElementById("lPass").value;
+
+if(!email || !password){
+showErr("Fill all fields");
+return;
+}
+
+try{
+
+const {error}=await db.auth.signInWithPassword({email,password});
+
+if(error) throw error;
+
+const {data:{session}}=await db.auth.getSession();
+
+if(!session) throw new Error("Session not ready");
+
+const {data:profile,error:pErr}=await db
+.from("profiles")
+.select("role")
+.eq("id",session.user.id)
+.single();
+
+if(pErr) throw pErr;
+
+if(profile.role==="admin")
+window.location.href="admin.html";
+else
+window.location.href="participant.html";
+
+}catch(err){
+
+showErr(err.message);
+
+}
+
+}
+
+async function doSignup(){
+
+clearErr();
+
+const name=document.getElementById("sName").value.trim();
+const email=document.getElementById("sEmail").value.trim();
+const pass=document.getElementById("sPass").value;
+const org=document.getElementById("sOrg").value.trim();
+
+if(!name||!email||!pass){
+showErr("Fill all required fields");
+return;
+}
+
+if(pass.length<6){
+showErr("Password must be 6 characters");
+return;
+}
+
+try{
+
+const {data,error}=await db.auth.signUp({
+email,
+password:pass
+});
+
+if(error) throw error;
+
+await db.from("profiles").upsert({
+id:data.user.id,
+full_name:name,
+role:chosenRole,
+organization:org,
+bio:""
+},{onConflict:"id"});
+
+if(chosenRole==="admin")
+window.location.href="admin.html";
+else
+window.location.href="participant.html";
+
+}catch(err){
+
+showErr(err.message);
+
+}
+
+}
+
+
+// auto login redirect
+
+(async()=>{
+
+try{
+
+const {data:{session}}=await db.auth.getSession();
+
+if(!session) return;
+
+const {data:profile}=await db
+.from("profiles")
+.select("role")
+.eq("id",session.user.id)
+.single();
+
+if(profile?.role==="admin")
+window.location.href="admin.html";
+else
+window.location.href="participant.html";
+
+}catch(e){
+console.log(e);
+}
+
+})();
+
+</script>
+
+</body>
+</html>
